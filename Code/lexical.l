@@ -1,13 +1,16 @@
 %{
-
+#define pf() printf("%s||%d\n", yytext, yylineno)
 %}
 
-letter [a-zA-Z]
+%option yylineno
+letter [_a-zA-Z]
 digit [0-9]
 digits {digit}+
+
 %%
-ID {
-	
-}
+{letter}+ { pf(); }
+{digits} { pf(); }
+[ |\n|\t|\r]+ {}
+. { pf(); } 
 
 %%
