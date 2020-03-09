@@ -8,7 +8,6 @@ int main(int argc, char** argv) {
 			return 1;
 		}
 	}
-	int asdfsdf;
 	while (yylex() != 0);
 	return 0;
 }
