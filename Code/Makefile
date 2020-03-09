@@ -36,7 +36,7 @@ syntax-c: $(YFILE)
 mytest:
 	flex lexical.l
 	gcc main.c lex.yy.c -lfl -o scanner 
-	./scanner ../Test/test##2.cmm
+	./scanner ../Test/test1.cmm
 test:
 	./parser ../Test/test1.cmm
 clean:

@@ -9,9 +9,8 @@
 %}
 
 %option yylineno
-letter [_a-zA-Z0-9]
+letter [_a-zA-Z]
 digit [0-9]
-digits {digit}+
 
 %%
 "if" {pf(if);}
@@ -20,29 +19,31 @@ digits {digit}+
 "struct" {pf(struct);}
 "return" {pf(return);}
 "int"|"float" {pf(type);}
-{letter}+ { pf(id); }
-"0"|([1-9]{digits}) { pf(num); }
+{letter}+{digit}* { pf(id); }
+"0"|([1-9]{digit}*) { pf(INT); }
+{digit}+\.{digit}+ { pf(FLOAT); }/* is 00.xx right???*/
+({digit}*\.{digit}+|{digit}+\.)[eE][+-]?{digit}+ { pf(eFLOAT); }
 
-[ |\n|\t|\r]+ {}
+([ ]|[\n]|[\r]|[\t])+ {}
 "/*".*"*/" { pf(comment); }
-"{" {}
-"}" {}
-"[" {}
-"]" {}
-"(" {}
-")" {}
-">"|"<"|">="|"<="|"=="|"!=" {}
-"+" {}
-"-" {}
-"*" {}
-"/" {}
-"&&" {}
-"||" {}
-"." {}
-"!" {}
-"=" {}
-"," {}
-";" {}
-. {} 
+"{" { pf(LC); }
+"}" { pf(RC); }
+"[" { pf(LB); }
+"]" { pf(RB); }
+"(" { pf(LP); }
+")" { pf(RP); }
+">"|"<"|">="|"<="|"=="|"!=" { pf(RELOP); }
+"+" { pf(PLUS); }
+"-" { pf(MINUS); }
+"*" { pf(MUL); }
+"/" { pf(DIV); }
+"&&" { pf(AND); }
+"||" { pf(OR); }
+"." { pf(DOT); }
+"!" { pf(NOT); }
+"=" { pf(ASSIGINOP); }
+"," { pf(COMMA); }
+";" { pf(SEMI); }
+. { pf(ERROR); } 
 
 %%
