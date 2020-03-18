@@ -20,10 +20,6 @@ union symbol_t{
 		char name[20];
 	}non_t;
 };
-/*typedef struct int_t int_t;
-typedef struct float_t float_t;
-typedef struct char_t char_t;
-typedef struct non_t non_t;*/
 typedef union symbol_t symbol_t;
 #define YYSTYPE symbol_t 
 
@@ -42,23 +38,13 @@ void yyerror(char* msg){
 #endif
 
 YYSTYPE *root;
-void tree_insert(char *name, YYSTYPE *fa, ...);
+void tree_insert(char *name, YYSTYPE *fa, int n_arg, ...);
 void pTree();
 
 %}
-/*%union YYSTYPE{
-	struct type_int{
-		YYSTYPE *fa, *bro;
-		char name[20];
-		int val;
-	};
-	struct type_float{
-		YYSTYPE *fa, *bro;
-		char name[20];
-		float val;
-	};
-	double type_double;
-	char type_sym[33];
+/*%union{
+	token_t;
+	non_t
 }*/
 
 %nonassoc LC RC
@@ -80,12 +66,17 @@ void pTree();
 %type <non_t>Program ExtDefList 
 %%
 /*High-level Definitions*/
-Program : ExtDefList { tree_insert("Program", (symbol_t*)(&$$),(symbol_t*)(&$1)); 
-		root = (symbol_t*)(&$$);
+Program : ExtDefList { tree_insert("Program", (YYSTYPE*)(&$$), 1, (YYSTYPE *)(&$1) ); 
+		root = (YYSTYPE*)(&$$);
 		pTree(); 
 	}
 	;
-ExtDefList : ExtDef { tree_insert("ExtDefList", (symbol_t*)(&$$)); }
+ExtDefList : ExtDef { 
+		//printf("%d\n",(int)(intptr_t)&$$);
+		//printf("1\n");
+		//YYSTYPE *p = (YYSTYPE *)&$$;
+		tree_insert("ExtDefList", (YYSTYPE*)(&$$), 0); 
+	}
 	| /*empty*/
 	;
 ExtDef : Specifier ExtDecList SEMI {}
@@ -168,21 +159,19 @@ Args : Exp COMMA Args
 	| Exp
 	;
 %%
-void tree_insert(char *name, YYSTYPE *fa, ...){
+void tree_insert(char *name, YYSTYPE* fa, int n_arg, ...){
 	va_list args;
-	va_start(args, fa);
-	va_arg(args, symbol_t*);
-	fa->non_t.child = NULL; fa->non_t.bro = NULL;
-	strcpy(fa->non_t.name, name);
-	printf("%s 1\n",fa->non_t.name);
+	va_start(args, n_arg);
+	YYSTYPE *cur = fa;
+	cur->non_t.child = NULL; 
+	cur->non_t.bro = NULL;
+	strcpy(cur->non_t.name, name);
+	//printf("%d\n",(int)(intptr_t)cur);
 	//assert(0);
-	while(1){
+	for(int i=0; i<n_arg; i++){
 		YYSTYPE *p = va_arg(args, YYSTYPE*); 
-		if(p==NULL) break;
-		//assert(0);
-		//printf("%c 2\n",p->non_t.name[0]);
-		//assert(0);
-		fa->non_t.child = p;
+		cur->non_t.child = p;
+		cur = p;
 	}
 	va_end(args);
 }

@@ -85,10 +85,19 @@ union symbol_t{
 		char name[20];
 	}non_t;
 };
-/*typedef struct int_t int_t;
-typedef struct float_t float_t;
-typedef struct char_t char_t;
-typedef struct non_t non_t;*/
+/*struct token_t{
+	tree_t *ptr;
+	union{
+		int int_val;
+		float float_val;
+		char char_val;
+	};
+};
+struct non_t{
+	tree_t *ptr;
+};*/
+/*typedef struct token_t token_t;
+typedef struct non_t not_t;*/
 typedef union symbol_t symbol_t;
 #define YYSTYPE symbol_t 
 
@@ -107,11 +116,11 @@ void yyerror(char* msg){
 #endif
 
 YYSTYPE *root;
-void tree_insert(char *name, YYSTYPE *fa, ...);
+void tree_insert(char *name, YYSTYPE *fa, int n_arg, ...);
 void pTree();
 
 
-#line 115 "syntax.tab.c" /* yacc.c:339  */
+#line 124 "syntax.tab.c" /* yacc.c:339  */
 
 # ifndef YY_NULLPTR
 #  if defined __cplusplus && 201103L <= __cplusplus
@@ -188,7 +197,7 @@ int yyparse (void);
 
 /* Copy the second part of user declarations.  */
 
-#line 192 "syntax.tab.c" /* yacc.c:358  */
+#line 201 "syntax.tab.c" /* yacc.c:358  */
 
 #ifdef short
 # undef short
@@ -488,12 +497,12 @@ static const yytype_uint8 yytranslate[] =
   /* YYRLINE[YYN] -- Source line where rule number YYN was defined.  */
 static const yytype_uint8 yyrline[] =
 {
-       0,    83,    83,    88,    89,    91,    92,    93,    95,    96,
-      99,   100,   102,   103,   105,   106,   108,   111,   112,   114,
-     115,   117,   118,   120,   123,   125,   126,   128,   129,   130,
-     131,   132,   133,   136,   137,   139,   141,   142,   144,   145,
-     148,   149,   150,   151,   152,   153,   154,   155,   156,   157,
-     158,   159,   160,   161,   162,   163,   164,   165,   167,   168
+       0,    82,    82,    87,    93,    95,    96,    97,    99,   100,
+     103,   104,   106,   107,   109,   110,   112,   115,   116,   118,
+     119,   121,   122,   124,   127,   129,   130,   132,   133,   134,
+     135,   136,   137,   140,   141,   143,   145,   146,   148,   149,
+     152,   153,   154,   155,   156,   157,   158,   159,   160,   161,
+     162,   163,   164,   165,   166,   167,   168,   169,   171,   172
 };
 #endif
 
@@ -1355,118 +1364,123 @@ yyreduce:
   switch (yyn)
     {
         case 2:
-#line 83 "syntax.y" /* yacc.c:1646  */
-    { tree_insert("Program", (symbol_t*)(&(yyval.non_t)),(symbol_t*)(&(yyvsp[0].non_t))); 
-		root = (symbol_t*)(&(yyval.non_t));
+#line 82 "syntax.y" /* yacc.c:1646  */
+    { tree_insert("Program", (YYSTYPE*)(&(yyval.non_t)), 1, (YYSTYPE *)(&(yyvsp[0].non_t)) ); 
+		root = (YYSTYPE*)(&(yyval.non_t));
 		pTree(); 
 	}
-#line 1364 "syntax.tab.c" /* yacc.c:1646  */
+#line 1373 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 3:
-#line 88 "syntax.y" /* yacc.c:1646  */
-    { tree_insert("ExtDefList", (symbol_t*)(&(yyval.non_t))); }
-#line 1370 "syntax.tab.c" /* yacc.c:1646  */
+#line 87 "syntax.y" /* yacc.c:1646  */
+    { 
+		//printf("%d\n",(int)(intptr_t)&$$);
+		//printf("1\n");
+		//YYSTYPE *p = (YYSTYPE *)&$$;
+		tree_insert("ExtDefList", (YYSTYPE*)(&(yyval.non_t)), 0); 
+	}
+#line 1384 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 5:
-#line 91 "syntax.y" /* yacc.c:1646  */
+#line 95 "syntax.y" /* yacc.c:1646  */
     {}
-#line 1376 "syntax.tab.c" /* yacc.c:1646  */
+#line 1390 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 6:
-#line 92 "syntax.y" /* yacc.c:1646  */
+#line 96 "syntax.y" /* yacc.c:1646  */
     {}
-#line 1382 "syntax.tab.c" /* yacc.c:1646  */
+#line 1396 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 7:
-#line 93 "syntax.y" /* yacc.c:1646  */
+#line 97 "syntax.y" /* yacc.c:1646  */
     {}
-#line 1388 "syntax.tab.c" /* yacc.c:1646  */
+#line 1402 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 8:
-#line 95 "syntax.y" /* yacc.c:1646  */
+#line 99 "syntax.y" /* yacc.c:1646  */
     {}
-#line 1394 "syntax.tab.c" /* yacc.c:1646  */
+#line 1408 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 9:
-#line 96 "syntax.y" /* yacc.c:1646  */
+#line 100 "syntax.y" /* yacc.c:1646  */
     {}
-#line 1400 "syntax.tab.c" /* yacc.c:1646  */
+#line 1414 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 10:
-#line 99 "syntax.y" /* yacc.c:1646  */
+#line 103 "syntax.y" /* yacc.c:1646  */
     {}
-#line 1406 "syntax.tab.c" /* yacc.c:1646  */
+#line 1420 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 11:
-#line 100 "syntax.y" /* yacc.c:1646  */
+#line 104 "syntax.y" /* yacc.c:1646  */
     {}
-#line 1412 "syntax.tab.c" /* yacc.c:1646  */
+#line 1426 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 12:
-#line 102 "syntax.y" /* yacc.c:1646  */
+#line 106 "syntax.y" /* yacc.c:1646  */
     {}
-#line 1418 "syntax.tab.c" /* yacc.c:1646  */
+#line 1432 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 13:
-#line 103 "syntax.y" /* yacc.c:1646  */
+#line 107 "syntax.y" /* yacc.c:1646  */
     {}
-#line 1424 "syntax.tab.c" /* yacc.c:1646  */
+#line 1438 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 14:
-#line 105 "syntax.y" /* yacc.c:1646  */
+#line 109 "syntax.y" /* yacc.c:1646  */
     {}
-#line 1430 "syntax.tab.c" /* yacc.c:1646  */
+#line 1444 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 16:
-#line 108 "syntax.y" /* yacc.c:1646  */
+#line 112 "syntax.y" /* yacc.c:1646  */
     {}
-#line 1436 "syntax.tab.c" /* yacc.c:1646  */
+#line 1450 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 17:
-#line 111 "syntax.y" /* yacc.c:1646  */
+#line 115 "syntax.y" /* yacc.c:1646  */
     {}
-#line 1442 "syntax.tab.c" /* yacc.c:1646  */
+#line 1456 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 18:
-#line 112 "syntax.y" /* yacc.c:1646  */
+#line 116 "syntax.y" /* yacc.c:1646  */
     {}
-#line 1448 "syntax.tab.c" /* yacc.c:1646  */
+#line 1462 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 19:
-#line 114 "syntax.y" /* yacc.c:1646  */
+#line 118 "syntax.y" /* yacc.c:1646  */
     {}
-#line 1454 "syntax.tab.c" /* yacc.c:1646  */
+#line 1468 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 20:
-#line 115 "syntax.y" /* yacc.c:1646  */
+#line 119 "syntax.y" /* yacc.c:1646  */
     {}
-#line 1460 "syntax.tab.c" /* yacc.c:1646  */
+#line 1474 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 21:
-#line 117 "syntax.y" /* yacc.c:1646  */
+#line 121 "syntax.y" /* yacc.c:1646  */
     {}
-#line 1466 "syntax.tab.c" /* yacc.c:1646  */
+#line 1480 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
 
-#line 1470 "syntax.tab.c" /* yacc.c:1646  */
+#line 1484 "syntax.tab.c" /* yacc.c:1646  */
       default: break;
     }
   /* User semantic actions sometimes alter yychar, and that requires
@@ -1694,23 +1708,21 @@ yyreturn:
 #endif
   return yyresult;
 }
-#line 170 "syntax.y" /* yacc.c:1906  */
+#line 174 "syntax.y" /* yacc.c:1906  */
 
-void tree_insert(char *name, YYSTYPE *fa, ...){
+void tree_insert(char *name, YYSTYPE* fa, int n_arg, ...){
 	va_list args;
-	va_start(args, fa);
-	va_arg(args, symbol_t*);
-	fa->non_t.child = NULL; fa->non_t.bro = NULL;
-	strcpy(fa->non_t.name, name);
-	printf("%s 1\n",fa->non_t.name);
+	va_start(args, n_arg);
+	YYSTYPE *cur = fa;
+	cur->non_t.child = NULL; 
+	cur->non_t.bro = NULL;
+	strcpy(cur->non_t.name, name);
+	//printf("%d\n",(int)(intptr_t)cur);
 	//assert(0);
-	while(1){
+	for(int i=0; i<n_arg; i++){
 		YYSTYPE *p = va_arg(args, YYSTYPE*); 
-		if(p==NULL) break;
-		//assert(0);
-		//printf("%c 2\n",p->non_t.name[0]);
-		//assert(0);
-		fa->non_t.child = p;
+		cur->non_t.child = p;
+		cur = p;
 	}
 	va_end(args);
 }
