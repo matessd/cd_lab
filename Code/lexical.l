@@ -1,8 +1,8 @@
 %{
  #include "syntax.tab.h"
- #define MY_DEBUG
+ //#define MY_LEX_DEBUG
 
- #ifdef MY_DEBUG
+ #ifdef MY_LEX_DEBUG
  #define pf(x) printf("%s; [%s] ; [%d]\n", #x, yytext, yylineno)
  #else
  #define pf(x) 
@@ -16,7 +16,7 @@ digit [0-9]
 %%
 "if" {pf(if); return IF;}
 "else" {pf(else); return ELSE;}
-"while" {pf(while); return WHLIE;}
+"while" {pf(while); return WHILE;}
 "struct" {pf(struct); return STRUCT;}
 "return" {pf(return); return RETURN; }
 "int"|"float" {pf(type); return TYPE; }
@@ -26,7 +26,7 @@ digit [0-9]
 ({digit}*\.{digit}+|{digit}+\.)[eE][+-]?{digit}+ { pf(eFLOAT); return FLOAT; }
 
 ([ ]|[\n]|[\r]|[\t])+ {}
-("/*".*"*/")|("//".*[\n|\r]) { pf(comment); }
+("/*".*"*/")|("//".*[\n]) { pf(comment); }
 "{" { pf(LC); return LC; }
 "}" { pf(RC); return RC; }
 "[" { pf(LB); return LB; }
@@ -36,13 +36,13 @@ digit [0-9]
 ">"|"<"|">="|"<="|"=="|"!=" { pf(RELOP); return RELOP; }
 "+" { pf(PLUS); return PLUS; }
 "-" { pf(MINUS); return MINUS; }
-"*" { pf(MUL); return MUL; }
+"*" { pf(STAR); return STAR; }
 "/" { pf(DIV); return DIV; }
 "&&" { pf(AND); return AND; }
 "||" { pf(OR); return OR; }
 "." { pf(DOT); return DOT; }
 "!" { pf(NOT); return NOT; }
-"=" { pf(ASSIGINOP); return ASSIGINOP; }
+"=" { pf(ASSIGNOP); return ASSIGNOP; }
 "," { pf(COMMA); return COMMA; }
 ";" { pf(SEMI); return SEMI; }
 . { pf(ERROR); } 
