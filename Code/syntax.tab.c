@@ -62,35 +62,19 @@
 
 
 /* Copy the first part of user declarations.  */
-#line 1 "syntax.y" /* yacc.c:339  */
+#line 2 "syntax.y" /* yacc.c:339  */
 
-/*union symbol_t{
-	struct{
-		union symbol_t *child, *bro;
-		char name[20];
-		int val; 
-	}int_t;
-	struct{
-		union symbol_t *child, *bro;
-		char name[20];
-		float val;
-	}float_t;
-	struct{
-		union symbol_t *child, *bro;
-		char name[20];
-		char val[33];
-	}char_t;
-	struct non_t{
-		struct non_t *ptr;
-		char name[20];
-	}non_t;
-};*/
-struct Non_t{
-	struct Non_t *child, *bro;
-	char name[20];
+struct node_t{
+	struct node_t *child, *bro;
+	char name[16];
+	int mode, lineno;
+	union{
+		int iVal;
+		float fVal;
+		char cVal[33];
+	};
 };
-typedef struct Non_t non_t;
-//typedef union symbol_t symbol_t;
+typedef struct node_t node_t;
 
 #include "lex.yy.c"
 #include <stdarg.h>
@@ -106,12 +90,11 @@ void yyerror(char* msg){
 #define pf1(x,y)
 #endif
 
-non_t *root;
-void tree_insert(char *name, non_t **fa, int n_arg, ...);
-void pTree(non_t* cur, int depth);
+node_t *root;
+void tree_insert(char *name, node_t **fa, YYLTYPE linetype, int n_arg, ...);
+void pTree(node_t* cur, int depth);
 
-
-#line 115 "syntax.tab.c" /* yacc.c:339  */
+#line 98 "syntax.tab.c" /* yacc.c:339  */
 
 # ifndef YY_NULLPTR
 #  if defined __cplusplus && 201103L <= __cplusplus
@@ -182,11 +165,11 @@ extern int yydebug;
 
 union YYSTYPE
 {
-#line 49 "syntax.y" /* yacc.c:355  */
+#line 33 "syntax.y" /* yacc.c:355  */
 
-	non_t *type_non;
+	node_t *node_ptr;
 
-#line 190 "syntax.tab.c" /* yacc.c:355  */
+#line 173 "syntax.tab.c" /* yacc.c:355  */
 };
 
 typedef union YYSTYPE YYSTYPE;
@@ -194,16 +177,30 @@ typedef union YYSTYPE YYSTYPE;
 # define YYSTYPE_IS_DECLARED 1
 #endif
 
+/* Location type.  */
+#if ! defined YYLTYPE && ! defined YYLTYPE_IS_DECLARED
+typedef struct YYLTYPE YYLTYPE;
+struct YYLTYPE
+{
+  int first_line;
+  int first_column;
+  int last_line;
+  int last_column;
+};
+# define YYLTYPE_IS_DECLARED 1
+# define YYLTYPE_IS_TRIVIAL 1
+#endif
+
 
 extern YYSTYPE yylval;
-
+extern YYLTYPE yylloc;
 int yyparse (void);
 
 #endif /* !YY_YY_SYNTAX_TAB_H_INCLUDED  */
 
 /* Copy the second part of user declarations.  */
 
-#line 207 "syntax.tab.c" /* yacc.c:358  */
+#line 204 "syntax.tab.c" /* yacc.c:358  */
 
 #ifdef short
 # undef short
@@ -384,13 +381,15 @@ void free (void *); /* INFRINGES ON USER NAME SPACE */
 
 #if (! defined yyoverflow \
      && (! defined __cplusplus \
-         || (defined YYSTYPE_IS_TRIVIAL && YYSTYPE_IS_TRIVIAL)))
+         || (defined YYLTYPE_IS_TRIVIAL && YYLTYPE_IS_TRIVIAL \
+             && defined YYSTYPE_IS_TRIVIAL && YYSTYPE_IS_TRIVIAL)))
 
 /* A type that is properly aligned for any stack member.  */
 union yyalloc
 {
   yytype_int16 yyss_alloc;
   YYSTYPE yyvs_alloc;
+  YYLTYPE yyls_alloc;
 };
 
 /* The size of the maximum gap between one aligned stack and the next.  */
@@ -399,8 +398,8 @@ union yyalloc
 /* The size of an array large to enough to hold all stacks, each with
    N elements.  */
 # define YYSTACK_BYTES(N) \
-     ((N) * (sizeof (yytype_int16) + sizeof (YYSTYPE)) \
-      + YYSTACK_GAP_MAXIMUM)
+     ((N) * (sizeof (yytype_int16) + sizeof (YYSTYPE) + sizeof (YYLTYPE)) \
+      + 2 * YYSTACK_GAP_MAXIMUM)
 
 # define YYCOPY_NEEDED 1
 
@@ -503,12 +502,12 @@ static const yytype_uint8 yytranslate[] =
   /* YYRLINE[YYN] -- Source line where rule number YYN was defined.  */
 static const yytype_uint8 yyrline[] =
 {
-       0,    76,    76,    81,    82,    84,    85,    86,    88,    89,
-      92,    93,    95,    96,    98,    99,   101,   104,   107,   109,
-     110,   112,   113,   115,   118,   120,   121,   123,   124,   125,
-     126,   127,   128,   131,   132,   134,   136,   137,   139,   140,
-     144,   145,   146,   147,   148,   149,   150,   151,   152,   153,
-     154,   155,   156,   157,   158,   159,   160,   161,   163,   164
+       0,    60,    60,    65,    66,    68,    69,    70,    72,    73,
+      76,    77,    79,    80,    82,    83,    85,    88,    91,    93,
+      94,    96,    97,    99,   102,   104,   105,   107,   108,   109,
+     110,   111,   112,   115,   116,   118,   120,   121,   123,   124,
+     128,   129,   130,   131,   132,   133,   134,   135,   136,   137,
+     138,   139,   140,   141,   142,   143,   144,   145,   147,   148
 };
 #endif
 
@@ -729,6 +728,32 @@ while (0)
 #define YYERRCODE       256
 
 
+/* YYLLOC_DEFAULT -- Set CURRENT to span from RHS[1] to RHS[N].
+   If N is 0, then set CURRENT to the empty location which ends
+   the previous symbol: RHS[0] (always defined).  */
+
+#ifndef YYLLOC_DEFAULT
+# define YYLLOC_DEFAULT(Current, Rhs, N)                                \
+    do                                                                  \
+      if (N)                                                            \
+        {                                                               \
+          (Current).first_line   = YYRHSLOC (Rhs, 1).first_line;        \
+          (Current).first_column = YYRHSLOC (Rhs, 1).first_column;      \
+          (Current).last_line    = YYRHSLOC (Rhs, N).last_line;         \
+          (Current).last_column  = YYRHSLOC (Rhs, N).last_column;       \
+        }                                                               \
+      else                                                              \
+        {                                                               \
+          (Current).first_line   = (Current).last_line   =              \
+            YYRHSLOC (Rhs, 0).last_line;                                \
+          (Current).first_column = (Current).last_column =              \
+            YYRHSLOC (Rhs, 0).last_column;                              \
+        }                                                               \
+    while (0)
+#endif
+
+#define YYRHSLOC(Rhs, K) ((Rhs)[K])
+
 
 /* Enable debugging if requested.  */
 #if YYDEBUG
@@ -744,9 +769,48 @@ do {                                            \
     YYFPRINTF Args;                             \
 } while (0)
 
-/* This macro is provided for backward compatibility. */
+
+/* YY_LOCATION_PRINT -- Print the location on the stream.
+   This macro was not mandated originally: define only if we know
+   we won't break user code: when these are the locations we know.  */
+
 #ifndef YY_LOCATION_PRINT
-# define YY_LOCATION_PRINT(File, Loc) ((void) 0)
+# if defined YYLTYPE_IS_TRIVIAL && YYLTYPE_IS_TRIVIAL
+
+/* Print *YYLOCP on YYO.  Private, do not rely on its existence. */
+
+YY_ATTRIBUTE_UNUSED
+static unsigned
+yy_location_print_ (FILE *yyo, YYLTYPE const * const yylocp)
+{
+  unsigned res = 0;
+  int end_col = 0 != yylocp->last_column ? yylocp->last_column - 1 : 0;
+  if (0 <= yylocp->first_line)
+    {
+      res += YYFPRINTF (yyo, "%d", yylocp->first_line);
+      if (0 <= yylocp->first_column)
+        res += YYFPRINTF (yyo, ".%d", yylocp->first_column);
+    }
+  if (0 <= yylocp->last_line)
+    {
+      if (yylocp->first_line < yylocp->last_line)
+        {
+          res += YYFPRINTF (yyo, "-%d", yylocp->last_line);
+          if (0 <= end_col)
+            res += YYFPRINTF (yyo, ".%d", end_col);
+        }
+      else if (0 <= end_col && yylocp->first_column < end_col)
+        res += YYFPRINTF (yyo, "-%d", end_col);
+    }
+  return res;
+ }
+
+#  define YY_LOCATION_PRINT(File, Loc)          \
+  yy_location_print_ (File, &(Loc))
+
+# else
+#  define YY_LOCATION_PRINT(File, Loc) ((void) 0)
+# endif
 #endif
 
 
@@ -756,7 +820,7 @@ do {                                                                      \
     {                                                                     \
       YYFPRINTF (stderr, "%s ", Title);                                   \
       yy_symbol_print (stderr,                                            \
-                  Type, Value); \
+                  Type, Value, Location); \
       YYFPRINTF (stderr, "\n");                                           \
     }                                                                     \
 } while (0)
@@ -767,10 +831,11 @@ do {                                                                      \
 `----------------------------------------*/
 
 static void
-yy_symbol_value_print (FILE *yyoutput, int yytype, YYSTYPE const * const yyvaluep)
+yy_symbol_value_print (FILE *yyoutput, int yytype, YYSTYPE const * const yyvaluep, YYLTYPE const * const yylocationp)
 {
   FILE *yyo = yyoutput;
   YYUSE (yyo);
+  YYUSE (yylocationp);
   if (!yyvaluep)
     return;
 # ifdef YYPRINT
@@ -786,12 +851,14 @@ yy_symbol_value_print (FILE *yyoutput, int yytype, YYSTYPE const * const yyvalue
 `--------------------------------*/
 
 static void
-yy_symbol_print (FILE *yyoutput, int yytype, YYSTYPE const * const yyvaluep)
+yy_symbol_print (FILE *yyoutput, int yytype, YYSTYPE const * const yyvaluep, YYLTYPE const * const yylocationp)
 {
   YYFPRINTF (yyoutput, "%s %s (",
              yytype < YYNTOKENS ? "token" : "nterm", yytname[yytype]);
 
-  yy_symbol_value_print (yyoutput, yytype, yyvaluep);
+  YY_LOCATION_PRINT (yyoutput, *yylocationp);
+  YYFPRINTF (yyoutput, ": ");
+  yy_symbol_value_print (yyoutput, yytype, yyvaluep, yylocationp);
   YYFPRINTF (yyoutput, ")");
 }
 
@@ -824,7 +891,7 @@ do {                                                            \
 `------------------------------------------------*/
 
 static void
-yy_reduce_print (yytype_int16 *yyssp, YYSTYPE *yyvsp, int yyrule)
+yy_reduce_print (yytype_int16 *yyssp, YYSTYPE *yyvsp, YYLTYPE *yylsp, int yyrule)
 {
   unsigned long int yylno = yyrline[yyrule];
   int yynrhs = yyr2[yyrule];
@@ -838,7 +905,7 @@ yy_reduce_print (yytype_int16 *yyssp, YYSTYPE *yyvsp, int yyrule)
       yy_symbol_print (stderr,
                        yystos[yyssp[yyi + 1 - yynrhs]],
                        &(yyvsp[(yyi + 1) - (yynrhs)])
-                                              );
+                       , &(yylsp[(yyi + 1) - (yynrhs)])                       );
       YYFPRINTF (stderr, "\n");
     }
 }
@@ -846,7 +913,7 @@ yy_reduce_print (yytype_int16 *yyssp, YYSTYPE *yyvsp, int yyrule)
 # define YY_REDUCE_PRINT(Rule)          \
 do {                                    \
   if (yydebug)                          \
-    yy_reduce_print (yyssp, yyvsp, Rule); \
+    yy_reduce_print (yyssp, yyvsp, yylsp, Rule); \
 } while (0)
 
 /* Nonzero means print parse trace.  It is left uninitialized so that
@@ -1104,9 +1171,10 @@ yysyntax_error (YYSIZE_T *yymsg_alloc, char **yymsg,
 `-----------------------------------------------*/
 
 static void
-yydestruct (const char *yymsg, int yytype, YYSTYPE *yyvaluep)
+yydestruct (const char *yymsg, int yytype, YYSTYPE *yyvaluep, YYLTYPE *yylocationp)
 {
   YYUSE (yyvaluep);
+  YYUSE (yylocationp);
   if (!yymsg)
     yymsg = "Deleting";
   YY_SYMBOL_PRINT (yymsg, yytype, yyvaluep, yylocationp);
@@ -1124,6 +1192,12 @@ int yychar;
 
 /* The semantic value of the lookahead symbol.  */
 YYSTYPE yylval;
+/* Location data for the lookahead symbol.  */
+YYLTYPE yylloc
+# if defined YYLTYPE_IS_TRIVIAL && YYLTYPE_IS_TRIVIAL
+  = { 1, 1, 1, 1 }
+# endif
+;
 /* Number of syntax errors so far.  */
 int yynerrs;
 
@@ -1142,6 +1216,7 @@ yyparse (void)
     /* The stacks and their tools:
        'yyss': related to states.
        'yyvs': related to semantic values.
+       'yyls': related to locations.
 
        Refer to the stacks through separate pointers, to allow yyoverflow
        to reallocate them elsewhere.  */
@@ -1156,6 +1231,14 @@ yyparse (void)
     YYSTYPE *yyvs;
     YYSTYPE *yyvsp;
 
+    /* The location stack.  */
+    YYLTYPE yylsa[YYINITDEPTH];
+    YYLTYPE *yyls;
+    YYLTYPE *yylsp;
+
+    /* The locations where the error started and ended.  */
+    YYLTYPE yyerror_range[3];
+
     YYSIZE_T yystacksize;
 
   int yyn;
@@ -1165,6 +1248,7 @@ yyparse (void)
   /* The variables used to return semantic value and location from the
      action routines.  */
   YYSTYPE yyval;
+  YYLTYPE yyloc;
 
 #if YYERROR_VERBOSE
   /* Buffer for error messages, and its allocated size.  */
@@ -1173,7 +1257,7 @@ yyparse (void)
   YYSIZE_T yymsg_alloc = sizeof yymsgbuf;
 #endif
 
-#define YYPOPSTACK(N)   (yyvsp -= (N), yyssp -= (N))
+#define YYPOPSTACK(N)   (yyvsp -= (N), yyssp -= (N), yylsp -= (N))
 
   /* The number of symbols on the RHS of the reduced rule.
      Keep to zero when no symbol should be popped.  */
@@ -1181,6 +1265,7 @@ yyparse (void)
 
   yyssp = yyss = yyssa;
   yyvsp = yyvs = yyvsa;
+  yylsp = yyls = yylsa;
   yystacksize = YYINITDEPTH;
 
   YYDPRINTF ((stderr, "Starting parse\n"));
@@ -1189,6 +1274,7 @@ yyparse (void)
   yyerrstatus = 0;
   yynerrs = 0;
   yychar = YYEMPTY; /* Cause a token to be read.  */
+  yylsp[0] = yylloc;
   goto yysetstate;
 
 /*------------------------------------------------------------.
@@ -1214,6 +1300,7 @@ yyparse (void)
            memory.  */
         YYSTYPE *yyvs1 = yyvs;
         yytype_int16 *yyss1 = yyss;
+        YYLTYPE *yyls1 = yyls;
 
         /* Each stack pointer address is followed by the size of the
            data in use in that stack, in bytes.  This used to be a
@@ -1222,8 +1309,10 @@ yyparse (void)
         yyoverflow (YY_("memory exhausted"),
                     &yyss1, yysize * sizeof (*yyssp),
                     &yyvs1, yysize * sizeof (*yyvsp),
+                    &yyls1, yysize * sizeof (*yylsp),
                     &yystacksize);
 
+        yyls = yyls1;
         yyss = yyss1;
         yyvs = yyvs1;
       }
@@ -1246,6 +1335,7 @@ yyparse (void)
           goto yyexhaustedlab;
         YYSTACK_RELOCATE (yyss_alloc, yyss);
         YYSTACK_RELOCATE (yyvs_alloc, yyvs);
+        YYSTACK_RELOCATE (yyls_alloc, yyls);
 #  undef YYSTACK_RELOCATE
         if (yyss1 != yyssa)
           YYSTACK_FREE (yyss1);
@@ -1255,6 +1345,7 @@ yyparse (void)
 
       yyssp = yyss + yysize - 1;
       yyvsp = yyvs + yysize - 1;
+      yylsp = yyls + yysize - 1;
 
       YYDPRINTF ((stderr, "Stack size increased to %lu\n",
                   (unsigned long int) yystacksize));
@@ -1332,7 +1423,7 @@ yybackup:
   YY_IGNORE_MAYBE_UNINITIALIZED_BEGIN
   *++yyvsp = yylval;
   YY_IGNORE_MAYBE_UNINITIALIZED_END
-
+  *++yylsp = yylloc;
   goto yynewstate;
 
 
@@ -1363,348 +1454,367 @@ yyreduce:
      GCC warning that YYVAL may be used uninitialized.  */
   yyval = yyvsp[1-yylen];
 
-
+  /* Default location.  */
+  YYLLOC_DEFAULT (yyloc, (yylsp - yylen), yylen);
   YY_REDUCE_PRINT (yyn);
   switch (yyn)
     {
         case 2:
-#line 76 "syntax.y" /* yacc.c:1646  */
-    { tree_insert("Program", &(yyval.type_non), 1, (yyvsp[0].type_non)); 
-		root = (yyval.type_non); 
+#line 60 "syntax.y" /* yacc.c:1646  */
+    { tree_insert("Program", &(yyval.node_ptr),(yyloc), 1, (yyvsp[0].node_ptr)); 
+		root = (yyval.node_ptr); 
 		pTree(root, 0); 
 	}
-#line 1377 "syntax.tab.c" /* yacc.c:1646  */
-    break;
-
-  case 3:
-#line 81 "syntax.y" /* yacc.c:1646  */
-    { tree_insert("ExtDefList", &(yyval.type_non), 1, (yyvsp[0].type_non)); }
-#line 1383 "syntax.tab.c" /* yacc.c:1646  */
-    break;
-
-  case 4:
-#line 82 "syntax.y" /* yacc.c:1646  */
-    {  }
-#line 1389 "syntax.tab.c" /* yacc.c:1646  */
-    break;
-
-  case 5:
-#line 84 "syntax.y" /* yacc.c:1646  */
-    { tree_insert("ExtDef", &(yyval.type_non), 3, (yyvsp[-2].type_non), (yyvsp[-1].type_non), (yyvsp[0].type_non));}
-#line 1395 "syntax.tab.c" /* yacc.c:1646  */
-    break;
-
-  case 6:
-#line 85 "syntax.y" /* yacc.c:1646  */
-    {tree_insert("ExtDef", &(yyval.type_non), 2, (yyvsp[-1].type_non), (yyvsp[0].type_non));}
-#line 1401 "syntax.tab.c" /* yacc.c:1646  */
-    break;
-
-  case 7:
-#line 86 "syntax.y" /* yacc.c:1646  */
-    {tree_insert("ExtDef", &(yyval.type_non), 3, (yyvsp[-2].type_non), (yyvsp[-1].type_non), (yyvsp[0].type_non));}
-#line 1407 "syntax.tab.c" /* yacc.c:1646  */
-    break;
-
-  case 8:
-#line 88 "syntax.y" /* yacc.c:1646  */
-    {tree_insert("ExtDefList", &(yyval.type_non), 1, (yyvsp[0].type_non));}
-#line 1413 "syntax.tab.c" /* yacc.c:1646  */
-    break;
-
-  case 9:
-#line 89 "syntax.y" /* yacc.c:1646  */
-    {tree_insert("ExtDefList", &(yyval.type_non), 3, (yyvsp[-2].type_non), (yyvsp[-1].type_non), (yyvsp[0].type_non));}
-#line 1419 "syntax.tab.c" /* yacc.c:1646  */
-    break;
-
-  case 10:
-#line 92 "syntax.y" /* yacc.c:1646  */
-    {tree_insert("Specifier", &(yyval.type_non), 1, (yyvsp[0].type_non));}
-#line 1425 "syntax.tab.c" /* yacc.c:1646  */
-    break;
-
-  case 11:
-#line 93 "syntax.y" /* yacc.c:1646  */
-    {tree_insert("Specifier", &(yyval.type_non), 1, (yyvsp[0].type_non));}
-#line 1431 "syntax.tab.c" /* yacc.c:1646  */
-    break;
-
-  case 12:
-#line 95 "syntax.y" /* yacc.c:1646  */
-    {tree_insert("StructSpecifier", &(yyval.type_non), 5, (yyvsp[-4].type_non), (yyvsp[-3].type_non), (yyvsp[-2].type_non), (yyvsp[-1].type_non), (yyvsp[0].type_non));}
-#line 1437 "syntax.tab.c" /* yacc.c:1646  */
-    break;
-
-  case 13:
-#line 96 "syntax.y" /* yacc.c:1646  */
-    {tree_insert("StructSpecifier", &(yyval.type_non), 2, (yyvsp[-1].type_non), (yyvsp[0].type_non));}
-#line 1443 "syntax.tab.c" /* yacc.c:1646  */
-    break;
-
-  case 14:
-#line 98 "syntax.y" /* yacc.c:1646  */
-    {tree_insert("OptTag", &(yyval.type_non), 1, (yyvsp[0].type_non));}
-#line 1449 "syntax.tab.c" /* yacc.c:1646  */
-    break;
-
-  case 16:
-#line 101 "syntax.y" /* yacc.c:1646  */
-    {tree_insert("Tag", &(yyval.type_non), 1, (yyvsp[0].type_non));}
-#line 1455 "syntax.tab.c" /* yacc.c:1646  */
-    break;
-
-  case 17:
-#line 104 "syntax.y" /* yacc.c:1646  */
-    {//printf("%d1\n",(int)(intptr_t)&$$); 
-		tree_insert("VarDec", &(yyval.type_non), 1, (yyvsp[0].type_non));
-	}
-#line 1463 "syntax.tab.c" /* yacc.c:1646  */
-    break;
-
-  case 18:
-#line 107 "syntax.y" /* yacc.c:1646  */
-    {tree_insert("VarDec", &(yyval.type_non), 4, (yyvsp[-3].type_non), (yyvsp[-2].type_non), (yyvsp[-1].type_non), (yyvsp[0].type_non));}
 #line 1469 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
-  case 19:
-#line 109 "syntax.y" /* yacc.c:1646  */
-    {tree_insert("FunDec", &(yyval.type_non), 4, (yyvsp[-3].type_non), (yyvsp[-2].type_non), (yyvsp[-1].type_non), (yyvsp[0].type_non));}
+  case 3:
+#line 65 "syntax.y" /* yacc.c:1646  */
+    { tree_insert("ExtDefList", &(yyval.node_ptr),(yyloc), 1, (yyvsp[0].node_ptr)); }
 #line 1475 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
-  case 20:
-#line 110 "syntax.y" /* yacc.c:1646  */
-    {tree_insert("FunDec", &(yyval.type_non), 3, (yyvsp[-2].type_non), (yyvsp[-1].type_non), (yyvsp[0].type_non));}
+  case 4:
+#line 66 "syntax.y" /* yacc.c:1646  */
+    { tree_insert("ExtDefList", &(yyval.node_ptr),(yyloc), 0); }
 #line 1481 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
-  case 21:
-#line 112 "syntax.y" /* yacc.c:1646  */
-    {tree_insert("VarList", &(yyval.type_non), 3, (yyvsp[-2].type_non), (yyvsp[-1].type_non), (yyvsp[0].type_non));}
+  case 5:
+#line 68 "syntax.y" /* yacc.c:1646  */
+    { tree_insert("ExtDef", &(yyval.node_ptr),(yyloc), 3, (yyvsp[-2].node_ptr), (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
 #line 1487 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
-  case 22:
-#line 113 "syntax.y" /* yacc.c:1646  */
-    {tree_insert("VarList", &(yyval.type_non), 1, (yyvsp[0].type_non));}
+  case 6:
+#line 69 "syntax.y" /* yacc.c:1646  */
+    {tree_insert("ExtDef", &(yyval.node_ptr),(yyloc), 2, (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
 #line 1493 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
-  case 23:
-#line 115 "syntax.y" /* yacc.c:1646  */
-    {tree_insert("ParamDec", &(yyval.type_non), 2, (yyvsp[-1].type_non), (yyvsp[0].type_non));}
+  case 7:
+#line 70 "syntax.y" /* yacc.c:1646  */
+    {tree_insert("ExtDef", &(yyval.node_ptr),(yyloc), 3, (yyvsp[-2].node_ptr), (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
 #line 1499 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
-  case 24:
-#line 118 "syntax.y" /* yacc.c:1646  */
-    {tree_insert("CompSt", &(yyval.type_non), 4, (yyvsp[-3].type_non), (yyvsp[-2].type_non), (yyvsp[-1].type_non), (yyvsp[0].type_non));}
+  case 8:
+#line 72 "syntax.y" /* yacc.c:1646  */
+    {tree_insert("ExtDefList", &(yyval.node_ptr),(yyloc), 1, (yyvsp[0].node_ptr));}
 #line 1505 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
-  case 25:
-#line 120 "syntax.y" /* yacc.c:1646  */
-    {tree_insert("StmtList", &(yyval.type_non), 2, (yyvsp[-1].type_non), (yyvsp[0].type_non));}
+  case 9:
+#line 73 "syntax.y" /* yacc.c:1646  */
+    {tree_insert("ExtDefList", &(yyval.node_ptr),(yyloc), 3, (yyvsp[-2].node_ptr), (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
 #line 1511 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
-  case 27:
-#line 123 "syntax.y" /* yacc.c:1646  */
-    {tree_insert("Stmt", &(yyval.type_non), 2, (yyvsp[-1].type_non), (yyvsp[0].type_non));}
+  case 10:
+#line 76 "syntax.y" /* yacc.c:1646  */
+    {tree_insert("Specifier", &(yyval.node_ptr),(yyloc), 1, (yyvsp[0].node_ptr));}
 #line 1517 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
-  case 28:
-#line 124 "syntax.y" /* yacc.c:1646  */
-    {tree_insert("Stmt", &(yyval.type_non), 1, (yyvsp[0].type_non));}
+  case 11:
+#line 77 "syntax.y" /* yacc.c:1646  */
+    {tree_insert("Specifier", &(yyval.node_ptr),(yyloc), 1, (yyvsp[0].node_ptr));}
 #line 1523 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
-  case 29:
-#line 125 "syntax.y" /* yacc.c:1646  */
-    {tree_insert("Stmt", &(yyval.type_non), 3, (yyvsp[-2].type_non), (yyvsp[-1].type_non), (yyvsp[0].type_non));}
+  case 12:
+#line 79 "syntax.y" /* yacc.c:1646  */
+    {tree_insert("StructSpecifier", &(yyval.node_ptr),(yyloc), 5, (yyvsp[-4].node_ptr), (yyvsp[-3].node_ptr), (yyvsp[-2].node_ptr), (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
 #line 1529 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
-  case 30:
-#line 126 "syntax.y" /* yacc.c:1646  */
-    {tree_insert("Stmt", &(yyval.type_non), 5, (yyvsp[-4].type_non), (yyvsp[-3].type_non), (yyvsp[-2].type_non), (yyvsp[-1].type_non), (yyvsp[0].type_non));}
+  case 13:
+#line 80 "syntax.y" /* yacc.c:1646  */
+    {tree_insert("StructSpecifier", &(yyval.node_ptr),(yyloc), 2, (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
 #line 1535 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
-  case 31:
-#line 127 "syntax.y" /* yacc.c:1646  */
-    {tree_insert("Stmt", &(yyval.type_non), 7, (yyvsp[-6].type_non), (yyvsp[-5].type_non), (yyvsp[-4].type_non), (yyvsp[-3].type_non), (yyvsp[-2].type_non), (yyvsp[-1].type_non), (yyvsp[0].type_non));}
+  case 14:
+#line 82 "syntax.y" /* yacc.c:1646  */
+    {tree_insert("OptTag", &(yyval.node_ptr),(yyloc), 1, (yyvsp[0].node_ptr));}
 #line 1541 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
-  case 32:
-#line 128 "syntax.y" /* yacc.c:1646  */
-    {tree_insert("Stmt", &(yyval.type_non), 5, (yyvsp[-4].type_non), (yyvsp[-3].type_non), (yyvsp[-2].type_non), (yyvsp[-1].type_non), (yyvsp[0].type_non));}
+  case 15:
+#line 83 "syntax.y" /* yacc.c:1646  */
+    {tree_insert("OptTag", &(yyval.node_ptr),(yyloc), 0); }
 #line 1547 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
-  case 33:
-#line 131 "syntax.y" /* yacc.c:1646  */
-    {tree_insert("DefList", &(yyval.type_non), 2, (yyvsp[-1].type_non), (yyvsp[0].type_non));}
+  case 16:
+#line 85 "syntax.y" /* yacc.c:1646  */
+    {tree_insert("Tag", &(yyval.node_ptr),(yyloc), 1, (yyvsp[0].node_ptr));}
 #line 1553 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
+  case 17:
+#line 88 "syntax.y" /* yacc.c:1646  */
+    {//printf("%d1\n",(int)(intptr_t)&$$,@$); 
+		tree_insert("VarDec", &(yyval.node_ptr),(yyloc), 1, (yyvsp[0].node_ptr));
+	}
+#line 1561 "syntax.tab.c" /* yacc.c:1646  */
+    break;
+
+  case 18:
+#line 91 "syntax.y" /* yacc.c:1646  */
+    {tree_insert("VarDec", &(yyval.node_ptr),(yyloc), 4, (yyvsp[-3].node_ptr), (yyvsp[-2].node_ptr), (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
+#line 1567 "syntax.tab.c" /* yacc.c:1646  */
+    break;
+
+  case 19:
+#line 93 "syntax.y" /* yacc.c:1646  */
+    {tree_insert("FunDec", &(yyval.node_ptr),(yyloc), 4, (yyvsp[-3].node_ptr), (yyvsp[-2].node_ptr), (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
+#line 1573 "syntax.tab.c" /* yacc.c:1646  */
+    break;
+
+  case 20:
+#line 94 "syntax.y" /* yacc.c:1646  */
+    {tree_insert("FunDec", &(yyval.node_ptr),(yyloc), 3, (yyvsp[-2].node_ptr), (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
+#line 1579 "syntax.tab.c" /* yacc.c:1646  */
+    break;
+
+  case 21:
+#line 96 "syntax.y" /* yacc.c:1646  */
+    {tree_insert("VarList", &(yyval.node_ptr),(yyloc), 3, (yyvsp[-2].node_ptr), (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
+#line 1585 "syntax.tab.c" /* yacc.c:1646  */
+    break;
+
+  case 22:
+#line 97 "syntax.y" /* yacc.c:1646  */
+    {tree_insert("VarList", &(yyval.node_ptr),(yyloc), 1, (yyvsp[0].node_ptr));}
+#line 1591 "syntax.tab.c" /* yacc.c:1646  */
+    break;
+
+  case 23:
+#line 99 "syntax.y" /* yacc.c:1646  */
+    {tree_insert("ParamDec", &(yyval.node_ptr),(yyloc), 2, (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
+#line 1597 "syntax.tab.c" /* yacc.c:1646  */
+    break;
+
+  case 24:
+#line 102 "syntax.y" /* yacc.c:1646  */
+    {tree_insert("CompSt", &(yyval.node_ptr),(yyloc), 4, (yyvsp[-3].node_ptr), (yyvsp[-2].node_ptr), (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
+#line 1603 "syntax.tab.c" /* yacc.c:1646  */
+    break;
+
+  case 25:
+#line 104 "syntax.y" /* yacc.c:1646  */
+    {tree_insert("StmtList", &(yyval.node_ptr),(yyloc), 2, (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
+#line 1609 "syntax.tab.c" /* yacc.c:1646  */
+    break;
+
+  case 26:
+#line 105 "syntax.y" /* yacc.c:1646  */
+    {tree_insert("StmtList", &(yyval.node_ptr),(yyloc), 0);}
+#line 1615 "syntax.tab.c" /* yacc.c:1646  */
+    break;
+
+  case 27:
+#line 107 "syntax.y" /* yacc.c:1646  */
+    {tree_insert("Stmt", &(yyval.node_ptr),(yyloc), 2, (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
+#line 1621 "syntax.tab.c" /* yacc.c:1646  */
+    break;
+
+  case 28:
+#line 108 "syntax.y" /* yacc.c:1646  */
+    {tree_insert("Stmt", &(yyval.node_ptr),(yyloc), 1, (yyvsp[0].node_ptr));}
+#line 1627 "syntax.tab.c" /* yacc.c:1646  */
+    break;
+
+  case 29:
+#line 109 "syntax.y" /* yacc.c:1646  */
+    {tree_insert("Stmt", &(yyval.node_ptr),(yyloc), 3, (yyvsp[-2].node_ptr), (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
+#line 1633 "syntax.tab.c" /* yacc.c:1646  */
+    break;
+
+  case 30:
+#line 110 "syntax.y" /* yacc.c:1646  */
+    {tree_insert("Stmt", &(yyval.node_ptr),(yyloc), 5, (yyvsp[-4].node_ptr), (yyvsp[-3].node_ptr), (yyvsp[-2].node_ptr), (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
+#line 1639 "syntax.tab.c" /* yacc.c:1646  */
+    break;
+
+  case 31:
+#line 111 "syntax.y" /* yacc.c:1646  */
+    {tree_insert("Stmt", &(yyval.node_ptr),(yyloc), 7, (yyvsp[-6].node_ptr), (yyvsp[-5].node_ptr), (yyvsp[-4].node_ptr), (yyvsp[-3].node_ptr), (yyvsp[-2].node_ptr), (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
+#line 1645 "syntax.tab.c" /* yacc.c:1646  */
+    break;
+
+  case 32:
+#line 112 "syntax.y" /* yacc.c:1646  */
+    {tree_insert("Stmt", &(yyval.node_ptr),(yyloc), 5, (yyvsp[-4].node_ptr), (yyvsp[-3].node_ptr), (yyvsp[-2].node_ptr), (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
+#line 1651 "syntax.tab.c" /* yacc.c:1646  */
+    break;
+
+  case 33:
+#line 115 "syntax.y" /* yacc.c:1646  */
+    {tree_insert("DefList", &(yyval.node_ptr),(yyloc), 2, (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
+#line 1657 "syntax.tab.c" /* yacc.c:1646  */
+    break;
+
+  case 34:
+#line 116 "syntax.y" /* yacc.c:1646  */
+    {tree_insert("DefList", &(yyval.node_ptr),(yyloc), 0);}
+#line 1663 "syntax.tab.c" /* yacc.c:1646  */
+    break;
+
   case 35:
-#line 134 "syntax.y" /* yacc.c:1646  */
-    {tree_insert("Def", &(yyval.type_non), 3, (yyvsp[-2].type_non), (yyvsp[-1].type_non), (yyvsp[0].type_non));}
-#line 1559 "syntax.tab.c" /* yacc.c:1646  */
+#line 118 "syntax.y" /* yacc.c:1646  */
+    {tree_insert("Def", &(yyval.node_ptr),(yyloc), 3, (yyvsp[-2].node_ptr), (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
+#line 1669 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 36:
-#line 136 "syntax.y" /* yacc.c:1646  */
-    {tree_insert("DecList", &(yyval.type_non), 1, (yyvsp[0].type_non));}
-#line 1565 "syntax.tab.c" /* yacc.c:1646  */
+#line 120 "syntax.y" /* yacc.c:1646  */
+    {tree_insert("DecList", &(yyval.node_ptr),(yyloc), 1, (yyvsp[0].node_ptr));}
+#line 1675 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 37:
-#line 137 "syntax.y" /* yacc.c:1646  */
-    {tree_insert("DecList", &(yyval.type_non), 3, (yyvsp[-2].type_non), (yyvsp[-1].type_non), (yyvsp[0].type_non));}
-#line 1571 "syntax.tab.c" /* yacc.c:1646  */
+#line 121 "syntax.y" /* yacc.c:1646  */
+    {tree_insert("DecList", &(yyval.node_ptr),(yyloc), 3, (yyvsp[-2].node_ptr), (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
+#line 1681 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 38:
-#line 139 "syntax.y" /* yacc.c:1646  */
-    {tree_insert("Dec", &(yyval.type_non), 1, (yyvsp[0].type_non));}
-#line 1577 "syntax.tab.c" /* yacc.c:1646  */
+#line 123 "syntax.y" /* yacc.c:1646  */
+    {tree_insert("Dec", &(yyval.node_ptr),(yyloc), 1, (yyvsp[0].node_ptr));}
+#line 1687 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 39:
-#line 140 "syntax.y" /* yacc.c:1646  */
+#line 124 "syntax.y" /* yacc.c:1646  */
     {//printf("%d2\n",(int)(intptr_t)$1);
-	tree_insert("Dec", &(yyval.type_non), 3, (yyvsp[-2].type_non), (yyvsp[-1].type_non), (yyvsp[0].type_non));}
-#line 1584 "syntax.tab.c" /* yacc.c:1646  */
+	tree_insert("Dec", &(yyval.node_ptr),(yyloc), 3, (yyvsp[-2].node_ptr), (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
+#line 1694 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 40:
-#line 144 "syntax.y" /* yacc.c:1646  */
-    {tree_insert("Exp", &(yyval.type_non), 3, (yyvsp[-2].type_non), (yyvsp[-1].type_non), (yyvsp[0].type_non));}
-#line 1590 "syntax.tab.c" /* yacc.c:1646  */
+#line 128 "syntax.y" /* yacc.c:1646  */
+    {tree_insert("Exp", &(yyval.node_ptr),(yyloc), 3, (yyvsp[-2].node_ptr), (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
+#line 1700 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 41:
-#line 145 "syntax.y" /* yacc.c:1646  */
-    {tree_insert("Exp", &(yyval.type_non), 3, (yyvsp[-2].type_non), (yyvsp[-1].type_non), (yyvsp[0].type_non));}
-#line 1596 "syntax.tab.c" /* yacc.c:1646  */
+#line 129 "syntax.y" /* yacc.c:1646  */
+    {tree_insert("Exp", &(yyval.node_ptr),(yyloc), 3, (yyvsp[-2].node_ptr), (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
+#line 1706 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 42:
-#line 146 "syntax.y" /* yacc.c:1646  */
-    {tree_insert("Exp", &(yyval.type_non), 3, (yyvsp[-2].type_non), (yyvsp[-1].type_non), (yyvsp[0].type_non));}
-#line 1602 "syntax.tab.c" /* yacc.c:1646  */
+#line 130 "syntax.y" /* yacc.c:1646  */
+    {tree_insert("Exp", &(yyval.node_ptr),(yyloc), 3, (yyvsp[-2].node_ptr), (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
+#line 1712 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 43:
-#line 147 "syntax.y" /* yacc.c:1646  */
-    {tree_insert("Exp", &(yyval.type_non), 3, (yyvsp[-2].type_non), (yyvsp[-1].type_non), (yyvsp[0].type_non));}
-#line 1608 "syntax.tab.c" /* yacc.c:1646  */
+#line 131 "syntax.y" /* yacc.c:1646  */
+    {tree_insert("Exp", &(yyval.node_ptr),(yyloc), 3, (yyvsp[-2].node_ptr), (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
+#line 1718 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 44:
-#line 148 "syntax.y" /* yacc.c:1646  */
-    {tree_insert("Exp", &(yyval.type_non), 3, (yyvsp[-2].type_non), (yyvsp[-1].type_non), (yyvsp[0].type_non));}
-#line 1614 "syntax.tab.c" /* yacc.c:1646  */
+#line 132 "syntax.y" /* yacc.c:1646  */
+    {tree_insert("Exp", &(yyval.node_ptr),(yyloc), 3, (yyvsp[-2].node_ptr), (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
+#line 1724 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 45:
-#line 149 "syntax.y" /* yacc.c:1646  */
-    {tree_insert("Exp", &(yyval.type_non), 3, (yyvsp[-2].type_non), (yyvsp[-1].type_non), (yyvsp[0].type_non));}
-#line 1620 "syntax.tab.c" /* yacc.c:1646  */
+#line 133 "syntax.y" /* yacc.c:1646  */
+    {tree_insert("Exp", &(yyval.node_ptr),(yyloc), 3, (yyvsp[-2].node_ptr), (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
+#line 1730 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 46:
-#line 150 "syntax.y" /* yacc.c:1646  */
-    {tree_insert("Exp", &(yyval.type_non), 3, (yyvsp[-2].type_non), (yyvsp[-1].type_non), (yyvsp[0].type_non));}
-#line 1626 "syntax.tab.c" /* yacc.c:1646  */
+#line 134 "syntax.y" /* yacc.c:1646  */
+    {tree_insert("Exp", &(yyval.node_ptr),(yyloc), 3, (yyvsp[-2].node_ptr), (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
+#line 1736 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 47:
-#line 151 "syntax.y" /* yacc.c:1646  */
-    {tree_insert("Exp", &(yyval.type_non), 3, (yyvsp[-2].type_non), (yyvsp[-1].type_non), (yyvsp[0].type_non));}
-#line 1632 "syntax.tab.c" /* yacc.c:1646  */
+#line 135 "syntax.y" /* yacc.c:1646  */
+    {tree_insert("Exp", &(yyval.node_ptr),(yyloc), 3, (yyvsp[-2].node_ptr), (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
+#line 1742 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 48:
-#line 152 "syntax.y" /* yacc.c:1646  */
-    {tree_insert("Exp", &(yyval.type_non), 3, (yyvsp[-2].type_non), (yyvsp[-1].type_non), (yyvsp[0].type_non));}
-#line 1638 "syntax.tab.c" /* yacc.c:1646  */
+#line 136 "syntax.y" /* yacc.c:1646  */
+    {tree_insert("Exp", &(yyval.node_ptr),(yyloc), 3, (yyvsp[-2].node_ptr), (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
+#line 1748 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 49:
-#line 153 "syntax.y" /* yacc.c:1646  */
-    {tree_insert("Exp", &(yyval.type_non), 2, (yyvsp[-1].type_non), (yyvsp[0].type_non));}
-#line 1644 "syntax.tab.c" /* yacc.c:1646  */
+#line 137 "syntax.y" /* yacc.c:1646  */
+    {tree_insert("Exp", &(yyval.node_ptr),(yyloc), 2, (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
+#line 1754 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 50:
-#line 154 "syntax.y" /* yacc.c:1646  */
-    {tree_insert("Exp", &(yyval.type_non), 2, (yyvsp[-1].type_non), (yyvsp[0].type_non));}
-#line 1650 "syntax.tab.c" /* yacc.c:1646  */
+#line 138 "syntax.y" /* yacc.c:1646  */
+    {tree_insert("Exp", &(yyval.node_ptr),(yyloc), 2, (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
+#line 1760 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 51:
-#line 155 "syntax.y" /* yacc.c:1646  */
-    {tree_insert("Exp", &(yyval.type_non), 4, (yyvsp[-3].type_non), (yyvsp[-2].type_non), (yyvsp[-1].type_non), (yyvsp[0].type_non));}
-#line 1656 "syntax.tab.c" /* yacc.c:1646  */
+#line 139 "syntax.y" /* yacc.c:1646  */
+    {tree_insert("Exp", &(yyval.node_ptr),(yyloc), 4, (yyvsp[-3].node_ptr), (yyvsp[-2].node_ptr), (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
+#line 1766 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 52:
-#line 156 "syntax.y" /* yacc.c:1646  */
-    {tree_insert("Exp", &(yyval.type_non), 3, (yyvsp[-2].type_non), (yyvsp[-1].type_non), (yyvsp[0].type_non));}
-#line 1662 "syntax.tab.c" /* yacc.c:1646  */
+#line 140 "syntax.y" /* yacc.c:1646  */
+    {tree_insert("Exp", &(yyval.node_ptr),(yyloc), 3, (yyvsp[-2].node_ptr), (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
+#line 1772 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 53:
-#line 157 "syntax.y" /* yacc.c:1646  */
-    {tree_insert("Exp", &(yyval.type_non), 4, (yyvsp[-3].type_non), (yyvsp[-2].type_non), (yyvsp[-1].type_non), (yyvsp[0].type_non));}
-#line 1668 "syntax.tab.c" /* yacc.c:1646  */
+#line 141 "syntax.y" /* yacc.c:1646  */
+    {tree_insert("Exp", &(yyval.node_ptr),(yyloc), 4, (yyvsp[-3].node_ptr), (yyvsp[-2].node_ptr), (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
+#line 1778 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 54:
-#line 158 "syntax.y" /* yacc.c:1646  */
-    {tree_insert("Exp", &(yyval.type_non), 3, (yyvsp[-2].type_non), (yyvsp[-1].type_non), (yyvsp[0].type_non));}
-#line 1674 "syntax.tab.c" /* yacc.c:1646  */
+#line 142 "syntax.y" /* yacc.c:1646  */
+    {tree_insert("Exp", &(yyval.node_ptr),(yyloc), 3, (yyvsp[-2].node_ptr), (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
+#line 1784 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 55:
-#line 159 "syntax.y" /* yacc.c:1646  */
-    {tree_insert("Exp", &(yyval.type_non), 1, (yyvsp[0].type_non));}
-#line 1680 "syntax.tab.c" /* yacc.c:1646  */
+#line 143 "syntax.y" /* yacc.c:1646  */
+    {tree_insert("Exp", &(yyval.node_ptr),(yyloc), 1, (yyvsp[0].node_ptr));}
+#line 1790 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 56:
-#line 160 "syntax.y" /* yacc.c:1646  */
-    {tree_insert("Exp", &(yyval.type_non), 1, (yyvsp[0].type_non));}
-#line 1686 "syntax.tab.c" /* yacc.c:1646  */
+#line 144 "syntax.y" /* yacc.c:1646  */
+    {tree_insert("Exp", &(yyval.node_ptr),(yyloc), 1, (yyvsp[0].node_ptr));}
+#line 1796 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 57:
-#line 161 "syntax.y" /* yacc.c:1646  */
-    {tree_insert("Exp", &(yyval.type_non), 1, (yyvsp[0].type_non));}
-#line 1692 "syntax.tab.c" /* yacc.c:1646  */
+#line 145 "syntax.y" /* yacc.c:1646  */
+    {tree_insert("Exp", &(yyval.node_ptr),(yyloc), 1, (yyvsp[0].node_ptr));}
+#line 1802 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 58:
-#line 163 "syntax.y" /* yacc.c:1646  */
-    {tree_insert("Args", &(yyval.type_non), 3, (yyvsp[-2].type_non), (yyvsp[-1].type_non), (yyvsp[0].type_non));}
-#line 1698 "syntax.tab.c" /* yacc.c:1646  */
+#line 147 "syntax.y" /* yacc.c:1646  */
+    {tree_insert("Args", &(yyval.node_ptr),(yyloc), 3, (yyvsp[-2].node_ptr), (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
+#line 1808 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 59:
-#line 164 "syntax.y" /* yacc.c:1646  */
-    {tree_insert("Args", &(yyval.type_non), 1, (yyvsp[0].type_non));}
-#line 1704 "syntax.tab.c" /* yacc.c:1646  */
+#line 148 "syntax.y" /* yacc.c:1646  */
+    {tree_insert("Args", &(yyval.node_ptr),(yyloc), 1, (yyvsp[0].node_ptr));}
+#line 1814 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
 
-#line 1708 "syntax.tab.c" /* yacc.c:1646  */
+#line 1818 "syntax.tab.c" /* yacc.c:1646  */
       default: break;
     }
   /* User semantic actions sometimes alter yychar, and that requires
@@ -1725,6 +1835,7 @@ yyreduce:
   YY_STACK_PRINT (yyss, yyssp);
 
   *++yyvsp = yyval;
+  *++yylsp = yyloc;
 
   /* Now 'shift' the result of the reduction.  Determine what state
      that goes to, based on the state we popped back to and the rule
@@ -1789,7 +1900,7 @@ yyerrlab:
 #endif
     }
 
-
+  yyerror_range[1] = yylloc;
 
   if (yyerrstatus == 3)
     {
@@ -1805,7 +1916,7 @@ yyerrlab:
       else
         {
           yydestruct ("Error: discarding",
-                      yytoken, &yylval);
+                      yytoken, &yylval, &yylloc);
           yychar = YYEMPTY;
         }
     }
@@ -1826,6 +1937,7 @@ yyerrorlab:
   if (/*CONSTCOND*/ 0)
      goto yyerrorlab;
 
+  yyerror_range[1] = yylsp[1-yylen];
   /* Do not reclaim the symbols of the rule whose action triggered
      this YYERROR.  */
   YYPOPSTACK (yylen);
@@ -1859,9 +1971,9 @@ yyerrlab1:
       if (yyssp == yyss)
         YYABORT;
 
-
+      yyerror_range[1] = *yylsp;
       yydestruct ("Error: popping",
-                  yystos[yystate], yyvsp);
+                  yystos[yystate], yyvsp, yylsp);
       YYPOPSTACK (1);
       yystate = *yyssp;
       YY_STACK_PRINT (yyss, yyssp);
@@ -1871,6 +1983,11 @@ yyerrlab1:
   *++yyvsp = yylval;
   YY_IGNORE_MAYBE_UNINITIALIZED_END
 
+  yyerror_range[2] = yylloc;
+  /* Using YYLLOC is tempting, but would change the location of
+     the lookahead.  YYLOC is available though.  */
+  YYLLOC_DEFAULT (yyloc, yyerror_range, 2);
+  *++yylsp = yyloc;
 
   /* Shift the error token.  */
   YY_SYMBOL_PRINT ("Shifting", yystos[yyn], yyvsp, yylsp);
@@ -1910,7 +2027,7 @@ yyreturn:
          user semantic actions for why this is necessary.  */
       yytoken = YYTRANSLATE (yychar);
       yydestruct ("Cleanup: discarding lookahead",
-                  yytoken, &yylval);
+                  yytoken, &yylval, &yylloc);
     }
   /* Do not reclaim the symbols of the rule whose action triggered
      this YYABORT or YYACCEPT.  */
@@ -1919,7 +2036,7 @@ yyreturn:
   while (yyssp != yyss)
     {
       yydestruct ("Cleanup: popping",
-                  yystos[*yyssp], yyvsp);
+                  yystos[*yyssp], yyvsp, yylsp);
       YYPOPSTACK (1);
     }
 #ifndef yyoverflow
@@ -1932,19 +2049,20 @@ yyreturn:
 #endif
   return yyresult;
 }
-#line 166 "syntax.y" /* yacc.c:1906  */
+#line 150 "syntax.y" /* yacc.c:1906  */
 
-void tree_insert(char *name, non_t** fa, int n_arg, ...){
+void tree_insert(char *name, node_t** fa,YYLTYPE linetype, int n_arg, ...){
 	va_list args;
 	va_start(args, n_arg);
-	*fa	= malloc(sizeof(non_t));
-	non_t *cur = *fa;
+	*fa	= malloc(sizeof(node_t));
+	node_t *cur = *fa;
 	cur->child = NULL; 
 	cur->bro = NULL;
+	cur->mode = (n_arg>0) ? 0 : -1;//mode<0 means empty unit
+	cur->lineno = linetype.first_line;
 	strcpy(cur->name, name);
 	for(int i=0; i<n_arg; i++){
-		non_t *nxt = va_arg(args, non_t*); 
-		//pf1(nxt,nxt->name);
+		node_t *nxt = va_arg(args, node_t*); 
 		if(i==0) cur->child = nxt;
 		else cur->bro = nxt;
 		cur = nxt;
@@ -1952,10 +2070,22 @@ void tree_insert(char *name, non_t** fa, int n_arg, ...){
 	va_end(args);
 }
 
-void pTree(non_t* cur, int depth){
+void pTree(node_t* cur, int depth){
+	//mode<0 means empty unit
+	if(cur->mode<0) return;
+	//space
 	for(int i=0; i<depth; i++) printf("  ");
-	printf("%s\n",cur->name);
-	non_t *p = cur->child;
+	printf("%s",cur->name);
+	//case
+	switch(cur->mode/4){
+		case 0: printf(" (%d)\n",cur->lineno); break;
+		case 1: printf("\n"); break;
+		case 2:printf(": %d\n",cur->iVal); break;
+		case 3: printf(": %f\n",cur->fVal); break;
+		case 4: printf(": %s\n",cur->cVal); break;
+		default: break;
+	}
+	node_t *p = cur->child;
 	if(p!=NULL){
 		pTree(p, depth+1);
 	}
