@@ -29,21 +29,23 @@ digit [0-9]
 "struct" {pf(struct); INIT_node_t("STRUCT", MODE1); return STRUCT;}
 "return" {pf(return); INIT_node_t("RETURN", MODE1); return RETURN; }
 "int"|"float" {pf(type); INIT_node_t("TYPE", 16); return TYPE; }
-{letter}+{digit}* { pf(id); INIT_node_t("ID", 16); return ID; }
+{letter}[_a-zA-Z0-9]* { pf(id); INIT_node_t("ID", 16); return ID; }
 "0"|([1-9]{digit}*) { pf(INT); INIT_node_t("INT", 8); return INT; }
-0[0-7]+ {INIT_node_t("INT", 8); return INT;}
+0[0-7]+ {INIT_node_t("INT", 9); return INT;}
+(0x|0X)[0-9A-Fa-f]+ {INIT_node_t("INT", 10); return INT;}
 {digit}+\.{digit}+ { pf(FLOAT); INIT_node_t("FLOAT", 12); return FLOAT; } /*is 00.xx right??? */
 ({digit}*\.{digit}+|{digit}+\.)[eE][+-]?{digit}+ { pf(eFLOAT); INIT_node_t("FLOAT", 12); return FLOAT; }
 ([ ]|[\t]|[\r])+ {}
 \n {yycolumn=1;}
-("/*".*"*/")|("//".*[\n]) { pf(comment); }
+"/*"[^*]*[*]+([^*/][^*]*[*]+)*[/] {pf(block_comment);}
+"//"[^\n]* { pf(line_comment); }
 "{" { pf(LC); INIT_node_t("LC", MODE1); return LC; }
 "}" { pf(RC); INIT_node_t("RC", MODE1); return RC; }
 "[" { pf(LB); INIT_node_t("LB", MODE1); return LB; }
 "]" { pf(RB); INIT_node_t("RB", MODE1); return RB; }
 "(" { pf(LP); INIT_node_t("LP", MODE1); return LP; }
 ")" { pf(RP); INIT_node_t("RP", MODE1); return RP; }
-">"|"<"|">="|"<="|"=="|"!=" { pf(RELOP); INIT_node_t("RELOP", 0); return RELOP; }
+">"|"<"|">="|"<="|"=="|"!=" { pf(RELOP); INIT_node_t("RELOP", MODE1); return RELOP; }
 "+" { pf(PLUS); INIT_node_t("PLUS", MODE1); return PLUS; }
 "-" { pf(MINUS); INIT_node_t("MINUS", MODE1); return MINUS; }
 "*" { pf(STAR); INIT_node_t("STAR", MODE1); return STAR; }
@@ -52,25 +54,34 @@ digit [0-9]
 "||" { pf(OR); INIT_node_t("OR", MODE1); return OR; }
 "." { pf(DOT); INIT_node_t("DOT", MODE1); return DOT; }
 "!" { pf(NOT); INIT_node_t("NOT", MODE1); return NOT; }
-"=" { pf(ASSIGNOP); INIT_node_t("ASSIGINOP", MODE1); return ASSIGNOP; }
+"=" { pf(ASSIGNOP); INIT_node_t("ASSIGNOP", MODE1); return ASSIGNOP; }
 "," { pf(COMMA); INIT_node_t("COMMA", MODE1); return COMMA; }
 ";" { pf(SEMI); INIT_node_t("SEMI", MODE1); return SEMI; }
 . { printf("Error type A at Line %d: Mysterious character %c\n", yylineno, yytext[0]); } 
 
 %%
+
+//int Oct_trans(char *src){
+
+
 void INIT_node_t(char *name, int mode){
+	//printf("word:[%s]:[%s]\n",name,yytext);
 	yylval.node_ptr = malloc(sizeof(node_t));
 	yylval.node_ptr->child = yylval.node_ptr->bro = NULL;
 	yylval.node_ptr->mode = mode;
 	strcpy(yylval.node_ptr->name, name);
 	switch(mode){
 		case 0: break;
-		case 1: break;
-		case 4: yylval.node_ptr->iVal=atoi(yytext);
+		case 4: break;
+		case 8: yylval.node_ptr->iVal=atoi(yytext);
 			break;
-		case 8: yylval.node_ptr->fVal=atof(yytext);
+		case 9: yylval.node_ptr->iVal=233;
 			break;
-		case 12: strcpy(yylval.node_ptr->cVal, yytext);
+		case 10: yylval.node_ptr->iVal =233;
+			break;
+		case 12: yylval.node_ptr->fVal=atof(yytext);
+			break;
+		case 16: strcpy(yylval.node_ptr->cVal, yytext);
 			break;
 		default : break;
 	}

@@ -17,9 +17,9 @@ typedef struct node_t node_t;
 #include <string.h>
 #include <assert.h>
 void yyerror(char* msg){
-	fprintf(stderr, "error: %s\n",msg);
+	fprintf(stderr, "error: %s.\n",msg);
 }
-//#define MY_BISON_DEBUG
+#define MY_BISON_DEBUG
 #ifdef MY_BISON_DEBUG
 #define pf1(x,y) printf("%s:[%s]\n",#x,y)
 #else 
@@ -62,7 +62,7 @@ Program : ExtDefList { tree_insert("Program", &$$,@$, 1, $1);
 		pTree(root, 0); 
 	}
 	;
-ExtDefList : ExtDef { tree_insert("ExtDefList", &$$,@$, 1, $1); }
+ExtDefList : ExtDef ExtDefList { tree_insert("ExtDefList", &$$,@$, 1, $1, $2); }
 	| /*empty*/{ tree_insert("ExtDefList", &$$,@$, 0); }
 	;
 ExtDef : Specifier ExtDecList SEMI { tree_insert("ExtDef", &$$,@$, 3, $1, $2, $3);}
@@ -152,6 +152,7 @@ void tree_insert(char *name, node_t** fa,YYLTYPE linetype, int n_arg, ...){
 	va_list args;
 	va_start(args, n_arg);
 	*fa	= malloc(sizeof(node_t));
+	//pf1(insert, name);
 	node_t *cur = *fa;
 	cur->child = NULL; 
 	cur->bro = NULL;
@@ -160,18 +161,21 @@ void tree_insert(char *name, node_t** fa,YYLTYPE linetype, int n_arg, ...){
 	strcpy(cur->name, name);
 	for(int i=0; i<n_arg; i++){
 		node_t *nxt = va_arg(args, node_t*); 
+		//pf1(nxt, nxt->name);
+		if(nxt->mode<0) continue;// empty string
 		if(i==0) cur->child = nxt;
 		else cur->bro = nxt;
 		cur = nxt;
 	}
+	//pTree(*fa, 1);
 	va_end(args);
 }
 
 void pTree(node_t* cur, int depth){
-	//mode<0 means empty unit
-	if(cur->mode<0) return;
+	//if(cur->mode<0) return;
 	//space
 	for(int i=0; i<depth; i++) printf("  ");
+	//empty case
 	printf("%s",cur->name);
 	//case
 	switch(cur->mode/4){
@@ -180,7 +184,7 @@ void pTree(node_t* cur, int depth){
 		case 2:printf(": %d\n",cur->iVal); break;
 		case 3: printf(": %f\n",cur->fVal); break;
 		case 4: printf(": %s\n",cur->cVal); break;
-		default: break;
+		default: assert(0); break;
 	}
 	node_t *p = cur->child;
 	if(p!=NULL){

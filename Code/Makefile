@@ -37,13 +37,11 @@ run:
 	make clean
 	bison -d syntax.y
 	flex lexical.l
-	gcc -g main.c syntax.tab.c -lfl -ly -o parser 
+	gcc -g main.c syntax.tab.c -lfl -ly -o ../parser 
 test1: 
-	./parser ../Test/test1.cmm > out1
-test2: 
-	./parser ../Test/test2.cmm
-test:
-	./parser ../Test/test1.cmm
+	./../parser ../Test/test1.cmm > out1
+test: 
+	./../parser ../workdir/a.cmm >out
 clean:
 	rm -f parser lex.yy.c syntax.tab.c syntax.tab.h syntax.output
 	rm -f $(OBJS) $(OBJS:.o=.d)
