@@ -21,10 +21,10 @@ digit [0-9]
 "struct" {pf(struct); INIT_non_t("STRUCT"); return STRUCT;}
 "return" {pf(return); INIT_non_t("RETURN"); return RETURN; }
 "int"|"float" {pf(type); INIT_non_t("TYPE"); return TYPE; }
-{letter}+{digit}* { pf(id); INIT_non_t("TYPE"); return ID; }
-"0"|([1-9]{digit}*) { pf(INT); INIT_non_t("TYPE"); return INT; }
-{digit}+\.{digit}+ { pf(FLOAT); INIT_non_t("TYPE"); return FLOAT; }/* is 00.xx right???*/
-({digit}*\.{digit}+|{digit}+\.)[eE][+-]?{digit}+ { pf(eFLOAT); INIT_non_t("TYPE"); return FLOAT; }
+{letter}+{digit}* { pf(id); INIT_non_t("ID"); return ID; }
+"0"|([1-9]{digit}*) { pf(INT); INIT_non_t("INT"); return INT; }
+{digit}+\.{digit}+ { pf(FLOAT); INIT_non_t("FLOAT"); return FLOAT; }/* is 00.xx right???*/
+({digit}*\.{digit}+|{digit}+\.)[eE][+-]?{digit}+ { pf(eFLOAT); INIT_non_t("FLOAT"); return FLOAT; }
 
 ([ ]|[\n]|[\r]|[\t])+ {}
 ("/*".*"*/")|("//".*[\n]) { pf(comment); }
@@ -50,8 +50,9 @@ digit [0-9]
 
 %%
 void INIT_non_t(char *name){
-	printf("word:[%s]\n",name);
-	yylval.non_t.child = yylval.non_t.bro = NULL;
-	strcpy(yylval.non_t.name, name);
+	//printf("word:[%s]\n",name);
+	yylval.type_non = malloc(sizeof(non_t));
+	yylval.type_non->child = yylval.type_non->bro = NULL;
+	strcpy(yylval.type_non->name, name);
 }
 

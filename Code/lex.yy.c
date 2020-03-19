@@ -895,22 +895,22 @@ YY_RULE_SETUP
 case 7:
 YY_RULE_SETUP
 #line 24 "lexical.l"
-{ pf(id); INIT_non_t("TYPE"); return ID; }
+{ pf(id); INIT_non_t("ID"); return ID; }
 	YY_BREAK
 case 8:
 YY_RULE_SETUP
 #line 25 "lexical.l"
-{ pf(INT); INIT_non_t("TYPE"); return INT; }
+{ pf(INT); INIT_non_t("INT"); return INT; }
 	YY_BREAK
 case 9:
 YY_RULE_SETUP
 #line 26 "lexical.l"
-{ pf(FLOAT); INIT_non_t("TYPE"); return FLOAT; }/* is 00.xx right???*/
+{ pf(FLOAT); INIT_non_t("FLOAT"); return FLOAT; }/* is 00.xx right???*/
 	YY_BREAK
 case 10:
 YY_RULE_SETUP
 #line 27 "lexical.l"
-{ pf(eFLOAT); INIT_non_t("TYPE"); return FLOAT; }
+{ pf(eFLOAT); INIT_non_t("FLOAT"); return FLOAT; }
 	YY_BREAK
 case 11:
 /* rule 11 can match eol */
@@ -2041,9 +2041,10 @@ void yyfree (void * ptr )
 
 
 void INIT_non_t(char *name){
-	printf("word:[%s]\n",name);
-	yylval.non_t.child = yylval.non_t.bro = NULL;
-	strcpy(yylval.non_t.name, name);
+	//printf("word:[%s]\n",name);
+	yylval.type_non = malloc(sizeof(non_t));
+	yylval.type_non->child = yylval.type_non->bro = NULL;
+	strcpy(yylval.type_non->name, name);
 }
 
 
