@@ -566,15 +566,16 @@ int yy_flex_debug = 0;
 char *yytext;
 #line 1 "lexical.l"
 #line 2 "lexical.l"
- #include "syntax.tab.h"
- //#define MY_LEX_DEBUG
+#include "syntax.tab.h"
+//#define MY_LEX_DEBUG
+#ifdef MY_LEX_DEBUG
+#define pf(x) printf("%s; [%s] ; [%d]\n", #x, yytext, yylineno)
+#else
+#define pf(x) 
+#endif
 
- #ifdef MY_LEX_DEBUG
- #define pf(x) printf("%s; [%s] ; [%d]\n", #x, yytext, yylineno)
- #else
- #define pf(x) 
- #endif
-#line 578 "lex.yy.c"
+void INIT_non_t(char *name);
+#line 579 "lex.yy.c"
 
 #define INITIAL 0
 
@@ -792,9 +793,9 @@ YY_DECL
 		}
 
 	{
-#line 16 "lexical.l"
+#line 17 "lexical.l"
 
-#line 798 "lex.yy.c"
+#line 799 "lex.yy.c"
 
 	while ( /*CONSTCOND*/1 )		/* loops until end-of-file is reached */
 		{
@@ -863,167 +864,167 @@ do_action:	/* This label is used only to access EOF actions. */
 
 case 1:
 YY_RULE_SETUP
-#line 17 "lexical.l"
-{pf(if); return IF;}
+#line 18 "lexical.l"
+{pf(if); INIT_non_t("IF"); return IF;}
 	YY_BREAK
 case 2:
 YY_RULE_SETUP
-#line 18 "lexical.l"
-{pf(else); return ELSE;}
+#line 19 "lexical.l"
+{pf(else); INIT_non_t("ELSE"); return ELSE;}
 	YY_BREAK
 case 3:
 YY_RULE_SETUP
-#line 19 "lexical.l"
-{pf(while); return WHILE;}
+#line 20 "lexical.l"
+{pf(while); INIT_non_t("WHILE"); return WHILE;}
 	YY_BREAK
 case 4:
 YY_RULE_SETUP
-#line 20 "lexical.l"
-{pf(struct); return STRUCT;}
+#line 21 "lexical.l"
+{pf(struct); INIT_non_t("STRUCT"); return STRUCT;}
 	YY_BREAK
 case 5:
 YY_RULE_SETUP
-#line 21 "lexical.l"
-{pf(return); return RETURN; }
+#line 22 "lexical.l"
+{pf(return); INIT_non_t("RETURN"); return RETURN; }
 	YY_BREAK
 case 6:
 YY_RULE_SETUP
-#line 22 "lexical.l"
-{pf(type); return TYPE; }
+#line 23 "lexical.l"
+{pf(type); INIT_non_t("TYPE"); return TYPE; }
 	YY_BREAK
 case 7:
 YY_RULE_SETUP
-#line 23 "lexical.l"
-{ pf(id); return ID; }
+#line 24 "lexical.l"
+{ pf(id); INIT_non_t("TYPE"); return ID; }
 	YY_BREAK
 case 8:
 YY_RULE_SETUP
-#line 24 "lexical.l"
-{ pf(INT); return INT; }
+#line 25 "lexical.l"
+{ pf(INT); INIT_non_t("TYPE"); return INT; }
 	YY_BREAK
 case 9:
 YY_RULE_SETUP
-#line 25 "lexical.l"
-{ pf(FLOAT); return FLOAT; }/* is 00.xx right???*/
+#line 26 "lexical.l"
+{ pf(FLOAT); INIT_non_t("TYPE"); return FLOAT; }/* is 00.xx right???*/
 	YY_BREAK
 case 10:
 YY_RULE_SETUP
-#line 26 "lexical.l"
-{ pf(eFLOAT); return FLOAT; }
+#line 27 "lexical.l"
+{ pf(eFLOAT); INIT_non_t("TYPE"); return FLOAT; }
 	YY_BREAK
 case 11:
 /* rule 11 can match eol */
 YY_RULE_SETUP
-#line 28 "lexical.l"
+#line 29 "lexical.l"
 {}
 	YY_BREAK
 case 12:
 /* rule 12 can match eol */
 YY_RULE_SETUP
-#line 29 "lexical.l"
+#line 30 "lexical.l"
 { pf(comment); }
 	YY_BREAK
 case 13:
 YY_RULE_SETUP
-#line 30 "lexical.l"
-{ pf(LC); return LC; }
+#line 31 "lexical.l"
+{ pf(LC); INIT_non_t("LC"); return LC; }
 	YY_BREAK
 case 14:
 YY_RULE_SETUP
-#line 31 "lexical.l"
-{ pf(RC); return RC; }
+#line 32 "lexical.l"
+{ pf(RC); INIT_non_t("RC"); return RC; }
 	YY_BREAK
 case 15:
 YY_RULE_SETUP
-#line 32 "lexical.l"
-{ pf(LB); return LB; }
+#line 33 "lexical.l"
+{ pf(LB); INIT_non_t("LB"); return LB; }
 	YY_BREAK
 case 16:
 YY_RULE_SETUP
-#line 33 "lexical.l"
-{ pf(RB); return RB; }
+#line 34 "lexical.l"
+{ pf(RB); INIT_non_t("RB"); return RB; }
 	YY_BREAK
 case 17:
 YY_RULE_SETUP
-#line 34 "lexical.l"
-{ pf(LP); return LP; }
+#line 35 "lexical.l"
+{ pf(LP); INIT_non_t("LP"); return LP; }
 	YY_BREAK
 case 18:
 YY_RULE_SETUP
-#line 35 "lexical.l"
-{ pf(RP); return RP; }
+#line 36 "lexical.l"
+{ pf(RP); INIT_non_t("RP"); return RP; }
 	YY_BREAK
 case 19:
 YY_RULE_SETUP
-#line 36 "lexical.l"
-{ pf(RELOP); return RELOP; }
+#line 37 "lexical.l"
+{ pf(RELOP); INIT_non_t("RELOP"); return RELOP; }
 	YY_BREAK
 case 20:
 YY_RULE_SETUP
-#line 37 "lexical.l"
-{ pf(PLUS); return PLUS; }
+#line 38 "lexical.l"
+{ pf(PLUS); INIT_non_t("PLUS"); return PLUS; }
 	YY_BREAK
 case 21:
 YY_RULE_SETUP
-#line 38 "lexical.l"
-{ pf(MINUS); return MINUS; }
+#line 39 "lexical.l"
+{ pf(MINUS); INIT_non_t("MINUS"); return MINUS; }
 	YY_BREAK
 case 22:
 YY_RULE_SETUP
-#line 39 "lexical.l"
-{ pf(STAR); return STAR; }
+#line 40 "lexical.l"
+{ pf(STAR); INIT_non_t("STAR"); return STAR; }
 	YY_BREAK
 case 23:
 YY_RULE_SETUP
-#line 40 "lexical.l"
-{ pf(DIV); return DIV; }
+#line 41 "lexical.l"
+{ pf(DIV); INIT_non_t("DIV"); return DIV; }
 	YY_BREAK
 case 24:
 YY_RULE_SETUP
-#line 41 "lexical.l"
-{ pf(AND); return AND; }
+#line 42 "lexical.l"
+{ pf(AND); INIT_non_t("AND"); return AND; }
 	YY_BREAK
 case 25:
 YY_RULE_SETUP
-#line 42 "lexical.l"
-{ pf(OR); return OR; }
+#line 43 "lexical.l"
+{ pf(OR); INIT_non_t("OR"); return OR; }
 	YY_BREAK
 case 26:
 YY_RULE_SETUP
-#line 43 "lexical.l"
-{ pf(DOT); return DOT; }
+#line 44 "lexical.l"
+{ pf(DOT); INIT_non_t("DOT"); return DOT; }
 	YY_BREAK
 case 27:
 YY_RULE_SETUP
-#line 44 "lexical.l"
-{ pf(NOT); return NOT; }
+#line 45 "lexical.l"
+{ pf(NOT); INIT_non_t("NOT"); return NOT; }
 	YY_BREAK
 case 28:
 YY_RULE_SETUP
-#line 45 "lexical.l"
-{ pf(ASSIGNOP); return ASSIGNOP; }
+#line 46 "lexical.l"
+{ pf(ASSIGNOP); INIT_non_t("ASSIGINOP"); return ASSIGNOP; }
 	YY_BREAK
 case 29:
 YY_RULE_SETUP
-#line 46 "lexical.l"
-{ pf(COMMA); return COMMA; }
+#line 47 "lexical.l"
+{ pf(COMMA); INIT_non_t("COMMA"); return COMMA; }
 	YY_BREAK
 case 30:
 YY_RULE_SETUP
-#line 47 "lexical.l"
-{ pf(SEMI); return SEMI; }
+#line 48 "lexical.l"
+{ pf(SEMI); INIT_non_t("SEMI"); return SEMI; }
 	YY_BREAK
 case 31:
 YY_RULE_SETUP
-#line 48 "lexical.l"
+#line 49 "lexical.l"
 { pf(ERROR); } 
 	YY_BREAK
 case 32:
 YY_RULE_SETUP
-#line 50 "lexical.l"
+#line 51 "lexical.l"
 ECHO;
 	YY_BREAK
-#line 1027 "lex.yy.c"
+#line 1028 "lex.yy.c"
 case YY_STATE_EOF(INITIAL):
 	yyterminate();
 
@@ -2036,7 +2037,13 @@ void yyfree (void * ptr )
 
 #define YYTABLES_NAME "yytables"
 
-#line 50 "lexical.l"
+#line 51 "lexical.l"
 
+
+void INIT_non_t(char *name){
+	printf("word:[%s]\n",name);
+	yylval.non_t.child = yylval.non_t.bro = NULL;
+	strcpy(yylval.non_t.name, name);
+}
 
 
