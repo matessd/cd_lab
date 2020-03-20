@@ -19,6 +19,7 @@ yycolumn += yyleng;
 #define MODE1 4
 %}
 
+%x COMMENT
 letter [_a-zA-Z]
 digit [0-9]
 
@@ -37,7 +38,8 @@ digit [0-9]
 ({digit}*\.{digit}+|{digit}+\.)[eE][+-]?{digit}+ { pf(eFLOAT); INIT_node_t("FLOAT", 12); return FLOAT; }
 ([ ]|[\t]|[\r])+ {}
 \n {yycolumn=1;}
-"/*"[^*]*[*]+([^*/][^*]*[*]+)*[/] {pf(block_comment);}
+"/*"[/]*[*]*([*]*([^*/]+[/]*)*)*"*/" { }
+"/*""*/"
 "//"[^\n]* { pf(line_comment); }
 "{" { pf(LC); INIT_node_t("LC", MODE1); return LC; }
 "}" { pf(RC); INIT_node_t("RC", MODE1); return RC; }
@@ -61,8 +63,31 @@ digit [0-9]
 
 %%
 
-//int Oct_trans(char *src){
+int Oct_trans(char *src){
+	int len = strlen(src);
+	int ret = 0;
+	for(int i=1; i<len; i++){
+		ret *= 8;
+		ret += src[i]-'0';
+	}
+	return ret;
+}
 
+int Hex_trans(char *src){
+	int len = strlen(src);
+	int ret = 0;
+	for(int i=2; i<len; i++){
+		ret *=16;
+		if(src[i]>=48 && src[i]<=57) 
+			ret += src[i]-'0';
+		if(src[i]>=65 && src[i]<=70)
+			ret += src[i]-'A'+10;
+		else if(src[i]>=97 && src[i]<=102)
+			ret += src[i]-'a'+10;
+		else ;//assert(0);
+	}
+	return ret;
+}
 
 void INIT_node_t(char *name, int mode){
 	//printf("word:[%s]:[%s]\n",name,yytext);
@@ -75,9 +100,9 @@ void INIT_node_t(char *name, int mode){
 		case 4: break;
 		case 8: yylval.node_ptr->iVal=atoi(yytext);
 			break;
-		case 9: yylval.node_ptr->iVal=233;
+		case 9: yylval.node_ptr->iVal=Oct_trans(yytext);
 			break;
-		case 10: yylval.node_ptr->iVal =233;
+		case 10: yylval.node_ptr->iVal =Hex_trans(yytext);
 			break;
 		case 12: yylval.node_ptr->fVal=atof(yytext);
 			break;

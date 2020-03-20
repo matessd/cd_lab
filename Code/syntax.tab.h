@@ -68,11 +68,12 @@ extern int yydebug;
     STAR = 278,
     DIV = 279,
     NOT = 280,
-    LP = 281,
-    RP = 282,
-    LB = 283,
-    RB = 284,
-    DOT = 285
+    HIGHER_THAN_MINUS = 281,
+    LP = 282,
+    RP = 283,
+    LB = 284,
+    RB = 285,
+    DOT = 286
   };
 #endif
 
@@ -85,7 +86,7 @@ union YYSTYPE
 
 	node_t *node_ptr;
 
-#line 89 "syntax.tab.h" /* yacc.c:1909  */
+#line 90 "syntax.tab.h" /* yacc.c:1909  */
 };
 
 typedef union YYSTYPE YYSTYPE;

@@ -47,8 +47,9 @@ void pTree(node_t* cur, int depth);
 %left <node_ptr>RELOP 
 %left <node_ptr>PLUS MINUS 
 %left <node_ptr>STAR DIV
-%right <node_ptr>NOT 
+%right <node_ptr>NOT HIGHER_THAN_MINUS 
 %left <node_ptr>LP RP LB RB DOT 
+/*non_terminal*/
 %type <node_ptr>Program ExtDefList ExtDef ExtDecList
 %type <node_ptr>Specifier StructSpecifier OptTag Tag
 %type <node_ptr>VarDec FunDec VarList ParamDec
@@ -59,18 +60,20 @@ void pTree(node_t* cur, int depth);
 /*High-level Definitions*/
 Program : ExtDefList { tree_insert("Program", &$$,@$, 1, $1); 
 		root = $$; 
+		//only empty character
+		if($1->child == NULL) $$->lineno = $1->lineno;
 		pTree(root, 0); 
 	}
 	;
-ExtDefList : ExtDef ExtDefList { tree_insert("ExtDefList", &$$,@$, 1, $1, $2); }
-	| /*empty*/{ tree_insert("ExtDefList", &$$,@$, 0); }
+ExtDefList : ExtDef ExtDefList { tree_insert("ExtDefList", &$$,@$, 2, $1, $2); }
+	| /*empty*/{ tree_insert("ExtDefList", &$$,@$, 0); $$->lineno=yylineno; }
 	;
 ExtDef : Specifier ExtDecList SEMI { tree_insert("ExtDef", &$$,@$, 3, $1, $2, $3);}
 	| Specifier SEMI {tree_insert("ExtDef", &$$,@$, 2, $1, $2);}
 	| Specifier FunDec CompSt {tree_insert("ExtDef", &$$,@$, 3, $1, $2, $3);}
 	;
-ExtDecList : VarDec {tree_insert("ExtDefList", &$$,@$, 1, $1);}
-	| VarDec COMMA ExtDecList {tree_insert("ExtDefList", &$$,@$, 3, $1, $2, $3);}
+ExtDecList : VarDec {tree_insert("ExtDecList", &$$,@$, 1, $1);}
+	| VarDec COMMA ExtDecList {tree_insert("ExtDecList", &$$,@$, 3, $1, $2, $3);}
 	;
 /*Specifiers*/
 Specifier : TYPE {tree_insert("Specifier", &$$,@$, 1, $1);}
@@ -134,7 +137,7 @@ Exp : Exp ASSIGNOP Exp  {tree_insert("Exp", &$$,@$, 3, $1, $2, $3);}
 	| Exp STAR Exp  {tree_insert("Exp", &$$,@$, 3, $1, $2, $3);}
 	| Exp DIV Exp  {tree_insert("Exp", &$$,@$, 3, $1, $2, $3);}
 	| LP Exp RP {tree_insert("Exp", &$$,@$, 3, $1, $2, $3);}
-	| MINUS Exp {tree_insert("Exp", &$$,@$, 2, $1, $2);}
+	| MINUS Exp %prec HIGHER_THAN_MINUS {tree_insert("Exp", &$$,@$, 2, $1, $2);}
 	| NOT Exp  {tree_insert("Exp", &$$,@$, 2, $1, $2);}
 	| ID LP Args RP {tree_insert("Exp", &$$,@$, 4, $1, $2, $3, $4);}
 	| ID LP RP {tree_insert("Exp", &$$,@$, 3, $1, $2, $3);}
@@ -172,7 +175,6 @@ void tree_insert(char *name, node_t** fa,YYLTYPE linetype, int n_arg, ...){
 }
 
 void pTree(node_t* cur, int depth){
-	//if(cur->mode<0) return;
 	//space
 	for(int i=0; i<depth; i++) printf("  ");
 	//empty case

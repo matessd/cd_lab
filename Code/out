@@ -1,18 +1,1 @@
-word:[TYPE]:[int]
-word:[ID]:[main]
-word:[LP]:[(]
-word:[RP]:[)]
-word:[LC]:[{]
-word:[RC]:[}]
-Program (1)
-  ExtDefList (1)
-    ExtDef (1)
-      Specifier (1)
-        TYPE: int
-      FunDec (1)
-        ID: main
-        LP
-        RP
-      CompSt (1)
-        LC
-        RC
+Program (3)

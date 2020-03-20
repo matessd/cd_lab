@@ -50,5 +50,5 @@ clean:
 git:
 	git add .
 	git commit -m 'usual'
-submit: 
+push: 
 	git push
