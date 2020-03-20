@@ -18,12 +18,9 @@ typedef struct node_t node_t;
 #include <stdarg.h>
 #include <string.h>
 #include <assert.h>
-int error_flg=0;
+int error_flg;
 void yyerror(const char* msg){
 	error_flg=1;
-	fprintf(stderr, "Error type B at Line %d: %s\n", yylineno, msg);
-}
-void myperror(const char *msg){
 	fprintf(stderr, "Error type B at Line %d: %s\n", yylineno, msg);
 }
 #define MY_BISON_DEBUG
@@ -35,7 +32,8 @@ void myperror(const char *msg){
 
 node_t *root;
 void tree_insert(char *name, node_t **fa, YYLTYPE linetype, int n_arg, ...);
-void pTree(node_t* cur, int depth);
+void pTree();
+void pSubTree(node_t* cur, int depth);
 %}
 %union{
 	node_t *node_ptr;
@@ -69,15 +67,16 @@ Program : ExtDefList { tree_insert("Program", &$$,@$, 1, $1);
 		root = $$; 
 		//only empty character
 		if($1->child == NULL) $$->lineno = $1->lineno;
-		pTree(root, 0); 
 	}
 	;
 ExtDefList : ExtDef ExtDefList { tree_insert("ExtDefList", &$$,@$, 2, $1, $2); }
 	| /*empty*/{ tree_insert("ExtDefList", &$$,@$, 0); $$->lineno=yylineno; }
+	| error RC {}
 	;
 ExtDef : Specifier ExtDecList SEMI { tree_insert("ExtDef", &$$,@$, 3, $1, $2, $3);}
 	| Specifier SEMI {tree_insert("ExtDef", &$$,@$, 2, $1, $2);}
 	| Specifier FunDec CompSt {tree_insert("ExtDef", &$$,@$, 3, $1, $2, $3);}
+	| Specifier error LC {}
 	;
 ExtDecList : VarDec {tree_insert("ExtDecList", &$$,@$, 1, $1);}
 	| VarDec COMMA ExtDecList {tree_insert("ExtDecList", &$$,@$, 3, $1, $2, $3);}
@@ -88,6 +87,7 @@ Specifier : TYPE {tree_insert("Specifier", &$$,@$, 1, $1);}
 	;
 StructSpecifier : STRUCT OptTag LC DefList RC {tree_insert("StructSpecifier", &$$,@$, 5, $1, $2, $3, $4, $5);}
 	| STRUCT Tag {tree_insert("StructSpecifier", &$$,@$, 2, $1, $2);}
+	| STRUCT error RC {}
 	;
 OptTag : ID {tree_insert("OptTag", &$$,@$, 1, $1);}
 	| /*empty*/{tree_insert("OptTag", &$$,@$, 0); }
@@ -99,17 +99,21 @@ VarDec : ID {//printf("%d1\n",(int)(intptr_t)&$$,@$);
 		tree_insert("VarDec", &$$,@$, 1, $1);
 	}
 	| VarDec LB INT RB {tree_insert("VarDec", &$$,@$, 4, $1, $2, $3, $4);}
+	| error RB {}
 	;
 FunDec : ID LP VarList RP {tree_insert("FunDec", &$$,@$, 4, $1, $2, $3, $4);}
 	| ID LP RP {tree_insert("FunDec", &$$,@$, 3, $1, $2, $3);}
+	| error RP {}
 	;
 VarList : ParamDec COMMA VarList {tree_insert("VarList", &$$,@$, 3, $1, $2, $3);}
 	| ParamDec {tree_insert("VarList", &$$,@$, 1, $1);}
+	| error COMMA {}
 	;
 ParamDec : Specifier VarDec {tree_insert("ParamDec", &$$,@$, 2, $1, $2);}
 	;
 /*Statements*/
 CompSt : LC DefList StmtList RC {tree_insert("CompSt", &$$,@$, 4, $1, $2, $3, $4);}
+	| error LC {}
 	;
 StmtList : Stmt StmtList  {tree_insert("StmtList", &$$,@$, 2, $1, $2);}
 	| /*empty*/{tree_insert("StmtList", &$$,@$, 0);}
@@ -120,7 +124,8 @@ Stmt : Exp SEMI  {tree_insert("Stmt", &$$,@$, 2, $1, $2);}
 	| IF LP Exp RP Stmt %prec LOWER_THAN_ELSE {tree_insert("Stmt", &$$,@$, 5, $1, $2, $3, $4, $5);}
 	| IF LP Exp RP Stmt ELSE Stmt {tree_insert("Stmt", &$$,@$, 7, $1, $2, $3, $4, $5, $6, $7);}
 	| WHILE LP Exp RP Stmt  {tree_insert("Stmt", &$$,@$, 5, $1, $2, $3, $4, $5);}
-	| error SEMI {yyerror("missing ;");}
+	| error SEMI {}
+	| Exp error SEMI {}
 	;
 /*Local Definitions*/
 DefList : Def DefList  {tree_insert("DefList", &$$,@$, 2, $1, $2);}
@@ -131,12 +136,11 @@ Def : Specifier DecList SEMI {tree_insert("Def", &$$,@$, 3, $1, $2, $3);}
 	;
 DecList : Dec {tree_insert("DecList", &$$,@$, 1, $1);} 
 	| Dec COMMA DecList {tree_insert("DecList", &$$,@$, 3, $1, $2, $3);} 
-	/*| error RB {}*/
+	| error COMMA {}
 	;
 Dec : VarDec {tree_insert("Dec", &$$,@$, 1, $1);} 
-	| VarDec ASSIGNOP Exp {//printf("%d2\n",(int)(intptr_t)$1);
-	tree_insert("Dec", &$$,@$, 3, $1, $2, $3);}
-	/*| error RP {}*/
+	| VarDec ASSIGNOP Exp {tree_insert("Dec", &$$,@$, 3, $1, $2, $3);}
+	| error RP {}
 	;
 /*Expressions*/
 Exp : Exp ASSIGNOP Exp  {tree_insert("Exp", &$$,@$, 3, $1, $2, $3);}
@@ -157,13 +161,11 @@ Exp : Exp ASSIGNOP Exp  {tree_insert("Exp", &$$,@$, 3, $1, $2, $3);}
 	| ID  {tree_insert("Exp", &$$,@$, 1, $1);}
 	| INT  {tree_insert("Exp", &$$,@$, 1, $1);}
 	| FLOAT  {tree_insert("Exp", &$$,@$, 1, $1);}
-	| Exp LB error RB	{}
-	| ID LP error RP {}
-	| LP error RP {}
+	| Exp LB error RB {}
+	| error RP {}
 	;
 Args : Exp COMMA Args {tree_insert("Args", &$$,@$, 3, $1, $2, $3);}
-	| Exp {tree_insert("Args", &$$,@$, 1, $1);}
-	| Exp error RP {} 
+	| Exp {tree_insert("Args", &$$,@$, 1, $1);} 
 	;
 %%
 void tree_insert(char *name, node_t** fa,YYLTYPE linetype, int n_arg, ...){
@@ -192,7 +194,11 @@ void tree_insert(char *name, node_t** fa,YYLTYPE linetype, int n_arg, ...){
 	va_end(args);
 }
 
-void pTree(node_t* cur, int depth){
+void pTree(){
+	pSubTree(root, 0);
+}
+
+void pSubTree(node_t* cur, int depth){
 	if(error_flg) return;
 	//space
 	for(int i=0; i<depth; i++) printf("  ");
@@ -209,10 +215,10 @@ void pTree(node_t* cur, int depth){
 	}
 	node_t *p = cur->child;
 	if(p!=NULL){
-		pTree(p, depth+1);
+		pSubTree(p, depth+1);
 	}
 	p = cur->bro;
 	if(p!=NULL){
-		pTree(p, depth);
+		pSubTree(p, depth);
 	}
 }

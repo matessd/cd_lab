@@ -35,11 +35,13 @@ syntax-c: $(YFILE)
 .PHONY: clean test mytest
 run:
 	make clean
-	bison -d syntax.y
+	bison -d -v syntax.y
 	flex lexical.l
 	gcc -g main.c syntax.tab.c -lfl -ly -o ../parser 
 test: 
-	./../parser ../workdir/a.cmm >out
+	./../parser ../workdir/a.cmm>out
+test1:
+	./../parser ../tests/moreTest/yzy8.cmm>out
 clean:
 	rm -f parser lex.yy.c syntax.tab.c syntax.tab.h syntax.output
 	rm -f $(OBJS) $(OBJS:.o=.d)
