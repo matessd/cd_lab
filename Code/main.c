@@ -2,6 +2,7 @@
 extern void yyrestart(FILE *input_file);
 extern int yyparse(void);
 extern int yylineno;
+extern int error_flg;
 //extern int yydebug;
 int main(int argc, char** argv) {
 	if(argc <= 1) return 1;
@@ -10,7 +11,7 @@ int main(int argc, char** argv) {
 		perror(argv[1]);
 		return 1;
 	}
-	//yydebug = 1;
+	error_flg = 0;
 	yylineno = 1;
 	yyrestart(f);
 	yyparse();

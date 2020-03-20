@@ -17,6 +17,7 @@ yylloc.last_column = yycolumn + yyleng - 1; \
 yycolumn += yyleng;
 
 #define MODE1 4
+extern int error_flg;
 %}
 
 %x COMMENT
@@ -39,7 +40,6 @@ digit [0-9]
 ([ ]|[\t]|[\r])+ {}
 \n {yycolumn=1;}
 "/*"[/]*[*]*([*]*([^*/]+[/]*)*)*"*/" { }
-"/*""*/"
 "//"[^\n]* { pf(line_comment); }
 "{" { pf(LC); INIT_node_t("LC", MODE1); return LC; }
 "}" { pf(RC); INIT_node_t("RC", MODE1); return RC; }
@@ -59,7 +59,10 @@ digit [0-9]
 "=" { pf(ASSIGNOP); INIT_node_t("ASSIGNOP", MODE1); return ASSIGNOP; }
 "," { pf(COMMA); INIT_node_t("COMMA", MODE1); return COMMA; }
 ";" { pf(SEMI); INIT_node_t("SEMI", MODE1); return SEMI; }
-. { printf("Error type A at Line %d: Mysterious character %c\n", yylineno, yytext[0]); } 
+.	{ 
+		error_flg = 1;
+		printf("Error type A at Line %d: Mysterious character \"%c\"\n", yylineno, yytext[0]); 
+	} 
 
 %%
 
@@ -90,7 +93,7 @@ int Hex_trans(char *src){
 }
 
 void INIT_node_t(char *name, int mode){
-	//printf("word:[%s]:[%s]\n",name,yytext);
+	//printf("  word:[%s]:[%s]\n",name,yytext);
 	yylval.node_ptr = malloc(sizeof(node_t));
 	yylval.node_ptr->child = yylval.node_ptr->bro = NULL;
 	yylval.node_ptr->mode = mode;

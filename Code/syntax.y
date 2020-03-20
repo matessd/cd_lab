@@ -1,5 +1,7 @@
 %locations
+%error-verbose
 %{
+//extern void yyerror(const char *msg);
 struct node_t{
 	struct node_t *child, *bro;
 	char name[16];
@@ -16,8 +18,13 @@ typedef struct node_t node_t;
 #include <stdarg.h>
 #include <string.h>
 #include <assert.h>
-void yyerror(char* msg){
-	fprintf(stderr, "error: %s.\n",msg);
+int error_flg=0;
+void yyerror(const char* msg){
+	error_flg=1;
+	fprintf(stderr, "Error type B at Line %d: %s\n", yylineno, msg);
+}
+void myperror(const char *msg){
+	fprintf(stderr, "Error type B at Line %d: %s\n", yylineno, msg);
 }
 #define MY_BISON_DEBUG
 #ifdef MY_BISON_DEBUG
@@ -113,19 +120,23 @@ Stmt : Exp SEMI  {tree_insert("Stmt", &$$,@$, 2, $1, $2);}
 	| IF LP Exp RP Stmt %prec LOWER_THAN_ELSE {tree_insert("Stmt", &$$,@$, 5, $1, $2, $3, $4, $5);}
 	| IF LP Exp RP Stmt ELSE Stmt {tree_insert("Stmt", &$$,@$, 7, $1, $2, $3, $4, $5, $6, $7);}
 	| WHILE LP Exp RP Stmt  {tree_insert("Stmt", &$$,@$, 5, $1, $2, $3, $4, $5);}
+	| error SEMI {yyerror("missing ;");}
 	;
 /*Local Definitions*/
 DefList : Def DefList  {tree_insert("DefList", &$$,@$, 2, $1, $2);}
 	| /*empty*/{tree_insert("DefList", &$$,@$, 0);}
 	;
 Def : Specifier DecList SEMI {tree_insert("Def", &$$,@$, 3, $1, $2, $3);}
+	| Specifier error SEMI {}
 	;
 DecList : Dec {tree_insert("DecList", &$$,@$, 1, $1);} 
 	| Dec COMMA DecList {tree_insert("DecList", &$$,@$, 3, $1, $2, $3);} 
+	/*| error RB {}*/
 	;
 Dec : VarDec {tree_insert("Dec", &$$,@$, 1, $1);} 
 	| VarDec ASSIGNOP Exp {//printf("%d2\n",(int)(intptr_t)$1);
 	tree_insert("Dec", &$$,@$, 3, $1, $2, $3);}
+	/*| error RP {}*/
 	;
 /*Expressions*/
 Exp : Exp ASSIGNOP Exp  {tree_insert("Exp", &$$,@$, 3, $1, $2, $3);}
@@ -146,16 +157,22 @@ Exp : Exp ASSIGNOP Exp  {tree_insert("Exp", &$$,@$, 3, $1, $2, $3);}
 	| ID  {tree_insert("Exp", &$$,@$, 1, $1);}
 	| INT  {tree_insert("Exp", &$$,@$, 1, $1);}
 	| FLOAT  {tree_insert("Exp", &$$,@$, 1, $1);}
+	| Exp LB error RB	{}
+	| ID LP error RP {}
+	| LP error RP {}
 	;
 Args : Exp COMMA Args {tree_insert("Args", &$$,@$, 3, $1, $2, $3);}
 	| Exp {tree_insert("Args", &$$,@$, 1, $1);}
+	| Exp error RP {} 
 	;
 %%
 void tree_insert(char *name, node_t** fa,YYLTYPE linetype, int n_arg, ...){
+	if(error_flg) return;
 	va_list args;
 	va_start(args, n_arg);
 	*fa	= malloc(sizeof(node_t));
 	//pf1(insert, name);
+	//printf("insert:[%s], line:%d\n",name, linetype.first_line);
 	node_t *cur = *fa;
 	cur->child = NULL; 
 	cur->bro = NULL;
@@ -164,7 +181,8 @@ void tree_insert(char *name, node_t** fa,YYLTYPE linetype, int n_arg, ...){
 	strcpy(cur->name, name);
 	for(int i=0; i<n_arg; i++){
 		node_t *nxt = va_arg(args, node_t*); 
-		//pf1(nxt, nxt->name);
+		//printf("  nxt:[%s], line:%d\n",nxt->name, nxt->lineno);
+		//pf1( nxt, nxt->name);
 		if(nxt->mode<0) continue;// empty string
 		if(i==0) cur->child = nxt;
 		else cur->bro = nxt;
@@ -175,6 +193,7 @@ void tree_insert(char *name, node_t** fa,YYLTYPE linetype, int n_arg, ...){
 }
 
 void pTree(node_t* cur, int depth){
+	if(error_flg) return;
 	//space
 	for(int i=0; i<depth; i++) printf("  ");
 	//empty case
@@ -186,7 +205,7 @@ void pTree(node_t* cur, int depth){
 		case 2:printf(": %d\n",cur->iVal); break;
 		case 3: printf(": %f\n",cur->fVal); break;
 		case 4: printf(": %s\n",cur->cVal); break;
-		default: assert(0); break;
+		default: break;
 	}
 	node_t *p = cur->child;
 	if(p!=NULL){

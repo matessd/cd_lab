@@ -38,8 +38,6 @@ run:
 	bison -d syntax.y
 	flex lexical.l
 	gcc -g main.c syntax.tab.c -lfl -ly -o ../parser 
-test1: 
-	./../parser ../Test/test1.cmm > out1
 test: 
 	./../parser ../workdir/a.cmm >out
 clean:
