@@ -35,7 +35,7 @@ echo "RUN=$RUN" > ./workdir/saved_binary.sh
 
 mkdir -p ./workdir
 
-for fcmm in ./tests/*.cmm; do
+for fcmm in ./Tests/*.cmm; do
   cp $fcmm ./workdir/a.cmm
   cp ${fcmm%.cmm}.out ./workdir/a.out
 

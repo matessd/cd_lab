@@ -17,9 +17,9 @@ CODE=0
 
 mkdir -p ./workdir
 
-for fcmm in ./tests/*.cmm; do
+for fcmm in ./Tests/*.cmm; do
   cp $fcmm ./workdir/a.cmm
-  cp ${fcmm%.cmm}.out ./workdir/a.out
+  cp ${fcmm%.cmm}.output ./workdir/a.out
 
   $RUN ./workdir/a.cmm > ./workdir/b.out 2>&1
 
@@ -27,8 +27,10 @@ for fcmm in ./tests/*.cmm; do
     echo test [$(basename $fcmm)] matched
   else
     echo -e "test [$(basename $fcmm)] mismatch"
-    diff ./workdir/a.out ./workdir/b.out | head -10
-    $CODE=-1
+    diff ./workdir/a.out ./workdir/b.out | head -0
+	wc -l ./workdir/a.out
+	wc -l ./workdir/b.out
+    CODE=-1
   fi
 done
 
