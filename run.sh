@@ -5,6 +5,8 @@ NC='\033[0m'
 BOLD=$(tput bold)
 NORMAL=$(tput sgr0)
 
+cd $(dirname $0)
+
 if ! [ -z $1 ]
 then
   rm ./workdir/saved_binary.sh 2> /dev/null
@@ -35,21 +37,39 @@ echo "RUN=$RUN" > ./workdir/saved_binary.sh
 
 mkdir -p ./workdir
 
-for fcmm in ./Tests/*.cmm; do
+report_error(){
+  echo -e "${RED}${BOLD}test [$(basename $fcmm)]" "$1" "${NC}${NORMAL}"
+  read -p "Enter [c] to continue, or [Enter] to abort: " txt
+  if [ -z "$txt" ] || [ $txt != 'c' ]
+  then
+    exit 1
+  fi
+}
+
+for fcmm in ./tests/*.cmm; do
   cp $fcmm ./workdir/a.cmm
-  cp ${fcmm%.cmm}.out ./workdir/a.out
+  cp ${fcmm%.cmm}.json ./workdir/a.json
 
-  $RUN ./workdir/a.cmm > ./workdir/b.out 2>&1
+  if timeout --help > /dev/null 2>&1; then #if has `timeout` command
+    if timeout 2 $RUN ./workdir/a.cmm > ./workdir/a.out 2>&1; then
+      true; #do nothing
+    else
+      report_error "RE or TLE"
+      continue
+    fi
+  else
+    if $RUN ./workdir/a.cmm > ./workdir/a.out 2>&1; then
+      true; #do nothing
+    else
+      report_error "RE"
+      continue
+    fi
+  fi
 
-  if ./check.sh ./workdir/a.out ./workdir/b.out; then
+  if python ./check.py; then
     echo test [$(basename $fcmm)] matched
   else
-    echo -e "${RED}${BOLD}test [$(basename $fcmm)] mismatch${NC}${NORMAL}"
-    diff ./workdir/a.out ./workdir/b.out | head -10
-    read -p "Enter [c] to continue, or [Enter] to abort: " txt
-    if [ -z "$txt" ] || [ $txt != 'c' ]
-    then
-      exit 0
-    fi
+    report_error "mismatch"
+    continue
   fi
 done
