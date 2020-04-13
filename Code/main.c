@@ -3,7 +3,7 @@ extern void yyrestart(FILE *input_file);
 extern int yyparse(void);
 extern int yylineno;
 extern int error_flg;
-extern void pTree();
+//extern void pTree();
 //extern int yydebug;
 int main(int argc, char** argv) {
 	if(argc <= 1) return 1;
@@ -17,7 +17,7 @@ int main(int argc, char** argv) {
 	yylineno = 1;
 	yyrestart(f);
 	yyparse();
-	pTree();
+	//pTree();
 	return 0;
 }
 

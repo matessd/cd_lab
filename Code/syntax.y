@@ -1,7 +1,6 @@
 %locations
 %error-verbose
 %{
-//extern void yyerror(const char *msg);
 struct node_t{
 	struct node_t *child, *bro;
 	char name[16];
@@ -21,7 +20,7 @@ typedef struct node_t node_t;
 int error_flg;
 void yyerror(const char* msg){
 	error_flg=1;
-	fprintf(stderr, "Error type B at Line %d: %s\n", yylineno, msg);
+	fprintf(stderr, "Error type B at Line %d: %s\n.", yylineno, msg);
 }
 #define MY_BISON_DEBUG
 #ifdef MY_BISON_DEBUG
@@ -168,12 +167,46 @@ Args : Exp COMMA Args {tree_insert("Args", &$$,@$, 3, $1, $2, $3);}
 	| Exp {tree_insert("Args", &$$,@$, 1, $1);} 
 	;
 %%
+
+struct sym_t{
+	struct sym_t *nxt;
+	char name[33];
+	int type;
+};
+typedef struct sym_t sym_t;
+#define MAX_ENV_DEEP 1024
+sym_t *envStack[MAX_ENV_DEEP];
+int envTop=0;
+sym_t *cur_env=NULL;
+
+void tree_traverse(){
+	envStack[0] = malloc(sizeof(sym_t));
+	cur_env = envStack[0];
+	subTree_traverse(root);
+}
+
+void subTree_traverse(node_t* cur){
+	//new symbol table
+	if(cur->child!=NULL){
+		if(strcmp(cur->name,"CompSt")==0){
+			envTop++; 
+			cur_env = envStack[envTop] = malloc(sizeof(sym_t));
+			subTree_traverse(cur->child);
+			free(cur_env);
+			envTop--;
+			cur_env = envStack[envTop];
+		}else{
+			subTree_traverse(cur->child);
+		}
+	}
+	case()
+}
+
 void tree_insert(char *name, node_t** fa,YYLTYPE linetype, int n_arg, ...){
 	if(error_flg) return;
 	va_list args;
 	va_start(args, n_arg);
 	*fa	= malloc(sizeof(node_t));
-	//pf1(insert, name);
 	//printf("insert:[%s], line:%d\n",name, linetype.first_line);
 	node_t *cur = *fa;
 	cur->child = NULL; 
@@ -184,7 +217,6 @@ void tree_insert(char *name, node_t** fa,YYLTYPE linetype, int n_arg, ...){
 	for(int i=0; i<n_arg; i++){
 		node_t *nxt = va_arg(args, node_t*); 
 		//printf("  nxt:[%s], line:%d\n",nxt->name, nxt->lineno);
-		//pf1( nxt, nxt->name);
 		if(nxt->mode<0) continue;// empty string
 		if(i==0) cur->child = nxt;
 		else cur->bro = nxt;
