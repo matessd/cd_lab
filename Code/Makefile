@@ -41,7 +41,7 @@ run:
 test: 
 	./../parser ../workdir/a.cmm>out
 test1:
-	./../parser ../tests/moreTest/yzy8.cmm>out
+	./../parser ../Tests/L1-A-12-48.cmm
 clean:
 	rm -f parser lex.yy.c syntax.tab.c syntax.tab.h syntax.output
 	rm -f $(OBJS) $(OBJS:.o=.d)
