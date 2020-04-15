@@ -1,4 +1,5 @@
 #include<stdio.h>
+//#include"myhead.h"
 extern void yyrestart(FILE *input_file);
 extern int yyparse(void);
 extern int yylineno;

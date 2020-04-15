@@ -63,51 +63,19 @@
 
 /* Copy the first part of user declarations.  */
 #line 3 "syntax.y" /* yacc.c:339  */
-
-
-#define INT_TYPE 0
-#define FLOAT_TYPE 1
-#define STR_TYPE 2
-struct node_t{
-	struct node_t *child, *bro;
-	char name[16];
-	int mode, lineno;
-	union{
-		int iVal;
-		float fVal;
-		char cVal[33];
-	};
-	/*Lab2*/
-	int val_type;
-	union{
-		int arg_num;//function args num
-		int arr_dim;//array dimension
-	};
-};
-typedef struct node_t node_t;
-
+ 
 #include "lex.yy.c"
-#include <stdarg.h>
-#include <string.h>
-#include <assert.h>
 int error_flg;
 void yyerror(const char* msg){
 	error_flg=1;
 	fprintf(stderr, "Error type B at Line %d: %s.\n", yylineno, msg);
 }
-#define MY_BISON_DEBUG
-#ifdef MY_BISON_DEBUG
-#define pf1(x,y) printf("%s:[%s]\n",#x,y)
-#else 
-#define pf1(x,y)
-#endif
 
-node_t *root;
-void tree_insert(char *name, node_t **fa, YYLTYPE linetype, int n_arg, ...);
+void tree_insert(int syntype, node_t **fa, YYLTYPE linetype, int n_arg, ...);
 void pTree();
 void pSubTree(node_t* cur, int depth);
 
-#line 111 "syntax.tab.c" /* yacc.c:339  */
+#line 79 "syntax.tab.c" /* yacc.c:339  */
 
 # ifndef YY_NULLPTR
 #  if defined __cplusplus && 201103L <= __cplusplus
@@ -179,11 +147,11 @@ extern int yydebug;
 
 union YYSTYPE
 {
-#line 47 "syntax.y" /* yacc.c:355  */
+#line 15 "syntax.y" /* yacc.c:355  */
 
-	node_t *node_ptr;
+	struct node_t *node_ptr;
 
-#line 187 "syntax.tab.c" /* yacc.c:355  */
+#line 155 "syntax.tab.c" /* yacc.c:355  */
 };
 
 typedef union YYSTYPE YYSTYPE;
@@ -214,7 +182,7 @@ int yyparse (void);
 
 /* Copy the second part of user declarations.  */
 
-#line 218 "syntax.tab.c" /* yacc.c:358  */
+#line 186 "syntax.tab.c" /* yacc.c:358  */
 
 #ifdef short
 # undef short
@@ -516,14 +484,14 @@ static const yytype_uint8 yytranslate[] =
   /* YYRLINE[YYN] -- Source line where rule number YYN was defined.  */
 static const yytype_uint8 yyrline[] =
 {
-       0,    75,    75,    81,    82,    83,    85,    86,    87,    88,
-      90,    91,    94,    95,    97,    98,    99,   101,   102,   104,
-     107,   110,   111,   113,   114,   115,   117,   118,   119,   121,
-     124,   125,   127,   128,   130,   131,   132,   133,   134,   135,
-     136,   137,   140,   141,   143,   144,   146,   147,   148,   150,
-     151,   152,   155,   156,   157,   158,   159,   160,   161,   162,
-     163,   164,   165,   166,   167,   168,   173,   174,   175,   179,
-     183,   184,   186,   187
+       0,    43,    43,    49,    50,    51,    53,    54,    55,    56,
+      58,    59,    62,    63,    65,    66,    67,    69,    70,    72,
+      75,    78,    79,    81,    82,    83,    85,    86,    87,    89,
+      92,    93,    95,    96,    98,    99,   100,   101,   102,   103,
+     104,   105,   108,   109,   111,   112,   114,   115,   116,   118,
+     119,   120,   123,   124,   125,   126,   127,   128,   129,   130,
+     131,   132,   133,   134,   135,   136,   139,   140,   141,   144,
+     147,   148,   150,   151
 };
 #endif
 
@@ -1504,455 +1472,451 @@ yyreduce:
   switch (yyn)
     {
         case 2:
-#line 75 "syntax.y" /* yacc.c:1646  */
-    { tree_insert("Program", &(yyval.node_ptr),(yyloc), 1, (yyvsp[0].node_ptr)); 
+#line 43 "syntax.y" /* yacc.c:1646  */
+    { tree_insert(myProgram, &(yyval.node_ptr),(yyloc), 1, (yyvsp[0].node_ptr)); 
 		root = (yyval.node_ptr); 
 		//only empty character
 		if((yyvsp[0].node_ptr)->child == NULL) (yyval.node_ptr)->lineno = (yyvsp[0].node_ptr)->lineno;
 	}
-#line 1514 "syntax.tab.c" /* yacc.c:1646  */
+#line 1482 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 3:
-#line 81 "syntax.y" /* yacc.c:1646  */
-    { tree_insert("ExtDefList", &(yyval.node_ptr),(yyloc), 2, (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr)); }
-#line 1520 "syntax.tab.c" /* yacc.c:1646  */
+#line 49 "syntax.y" /* yacc.c:1646  */
+    { tree_insert(myExtDefList, &(yyval.node_ptr),(yyloc), 2, (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr)); }
+#line 1488 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 4:
-#line 82 "syntax.y" /* yacc.c:1646  */
-    { tree_insert("ExtDefList", &(yyval.node_ptr),(yyloc), 0); (yyval.node_ptr)->lineno=yylineno; }
-#line 1526 "syntax.tab.c" /* yacc.c:1646  */
+#line 50 "syntax.y" /* yacc.c:1646  */
+    { tree_insert(myExtDefList, &(yyval.node_ptr),(yyloc), 0); (yyval.node_ptr)->lineno=yylineno; }
+#line 1494 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 5:
-#line 83 "syntax.y" /* yacc.c:1646  */
+#line 51 "syntax.y" /* yacc.c:1646  */
     {}
-#line 1532 "syntax.tab.c" /* yacc.c:1646  */
+#line 1500 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 6:
-#line 85 "syntax.y" /* yacc.c:1646  */
-    { tree_insert("ExtDef", &(yyval.node_ptr),(yyloc), 3, (yyvsp[-2].node_ptr), (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
-#line 1538 "syntax.tab.c" /* yacc.c:1646  */
+#line 53 "syntax.y" /* yacc.c:1646  */
+    { tree_insert(myExtDef, &(yyval.node_ptr),(yyloc), 3, (yyvsp[-2].node_ptr), (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
+#line 1506 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 7:
-#line 86 "syntax.y" /* yacc.c:1646  */
-    {tree_insert("ExtDef", &(yyval.node_ptr),(yyloc), 2, (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
-#line 1544 "syntax.tab.c" /* yacc.c:1646  */
+#line 54 "syntax.y" /* yacc.c:1646  */
+    {tree_insert(myExtDef, &(yyval.node_ptr),(yyloc), 2, (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
+#line 1512 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 8:
-#line 87 "syntax.y" /* yacc.c:1646  */
-    {tree_insert("ExtDef", &(yyval.node_ptr),(yyloc), 3, (yyvsp[-2].node_ptr), (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
-#line 1550 "syntax.tab.c" /* yacc.c:1646  */
+#line 55 "syntax.y" /* yacc.c:1646  */
+    {tree_insert(myExtDef, &(yyval.node_ptr),(yyloc), 3, (yyvsp[-2].node_ptr), (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
+#line 1518 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 9:
-#line 88 "syntax.y" /* yacc.c:1646  */
+#line 56 "syntax.y" /* yacc.c:1646  */
     {}
-#line 1556 "syntax.tab.c" /* yacc.c:1646  */
+#line 1524 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 10:
-#line 90 "syntax.y" /* yacc.c:1646  */
-    {tree_insert("ExtDecList", &(yyval.node_ptr),(yyloc), 1, (yyvsp[0].node_ptr));}
-#line 1562 "syntax.tab.c" /* yacc.c:1646  */
+#line 58 "syntax.y" /* yacc.c:1646  */
+    {tree_insert(myExtDecList, &(yyval.node_ptr),(yyloc), 1, (yyvsp[0].node_ptr));}
+#line 1530 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 11:
-#line 91 "syntax.y" /* yacc.c:1646  */
-    {tree_insert("ExtDecList", &(yyval.node_ptr),(yyloc), 3, (yyvsp[-2].node_ptr), (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
-#line 1568 "syntax.tab.c" /* yacc.c:1646  */
+#line 59 "syntax.y" /* yacc.c:1646  */
+    {tree_insert(myExtDecList, &(yyval.node_ptr),(yyloc), 3, (yyvsp[-2].node_ptr), (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
+#line 1536 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 12:
-#line 94 "syntax.y" /* yacc.c:1646  */
-    {tree_insert("Specifier", &(yyval.node_ptr),(yyloc), 1, (yyvsp[0].node_ptr));}
-#line 1574 "syntax.tab.c" /* yacc.c:1646  */
+#line 62 "syntax.y" /* yacc.c:1646  */
+    {tree_insert(mySpecifier, &(yyval.node_ptr),(yyloc), 1, (yyvsp[0].node_ptr));}
+#line 1542 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 13:
-#line 95 "syntax.y" /* yacc.c:1646  */
-    {tree_insert("Specifier", &(yyval.node_ptr),(yyloc), 1, (yyvsp[0].node_ptr));}
-#line 1580 "syntax.tab.c" /* yacc.c:1646  */
+#line 63 "syntax.y" /* yacc.c:1646  */
+    {tree_insert(mySpecifier, &(yyval.node_ptr),(yyloc), 1, (yyvsp[0].node_ptr));}
+#line 1548 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 14:
-#line 97 "syntax.y" /* yacc.c:1646  */
-    {tree_insert("StructSpecifier", &(yyval.node_ptr),(yyloc), 5, (yyvsp[-4].node_ptr), (yyvsp[-3].node_ptr), (yyvsp[-2].node_ptr), (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
-#line 1586 "syntax.tab.c" /* yacc.c:1646  */
+#line 65 "syntax.y" /* yacc.c:1646  */
+    {tree_insert(myStructSpecifier, &(yyval.node_ptr),(yyloc), 5, (yyvsp[-4].node_ptr), (yyvsp[-3].node_ptr), (yyvsp[-2].node_ptr), (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
+#line 1554 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 15:
-#line 98 "syntax.y" /* yacc.c:1646  */
-    {tree_insert("StructSpecifier", &(yyval.node_ptr),(yyloc), 2, (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
-#line 1592 "syntax.tab.c" /* yacc.c:1646  */
+#line 66 "syntax.y" /* yacc.c:1646  */
+    {tree_insert(myStructSpecifier, &(yyval.node_ptr),(yyloc), 2, (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
+#line 1560 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 16:
-#line 99 "syntax.y" /* yacc.c:1646  */
+#line 67 "syntax.y" /* yacc.c:1646  */
     {}
-#line 1598 "syntax.tab.c" /* yacc.c:1646  */
+#line 1566 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 17:
-#line 101 "syntax.y" /* yacc.c:1646  */
-    {tree_insert("OptTag", &(yyval.node_ptr),(yyloc), 1, (yyvsp[0].node_ptr));}
-#line 1604 "syntax.tab.c" /* yacc.c:1646  */
+#line 69 "syntax.y" /* yacc.c:1646  */
+    {tree_insert(myOptTag, &(yyval.node_ptr),(yyloc), 1, (yyvsp[0].node_ptr));}
+#line 1572 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 18:
-#line 102 "syntax.y" /* yacc.c:1646  */
-    {tree_insert("OptTag", &(yyval.node_ptr),(yyloc), 0); }
-#line 1610 "syntax.tab.c" /* yacc.c:1646  */
+#line 70 "syntax.y" /* yacc.c:1646  */
+    {tree_insert(myOptTag, &(yyval.node_ptr),(yyloc), 0); }
+#line 1578 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 19:
-#line 104 "syntax.y" /* yacc.c:1646  */
-    {tree_insert("Tag", &(yyval.node_ptr),(yyloc), 1, (yyvsp[0].node_ptr));}
-#line 1616 "syntax.tab.c" /* yacc.c:1646  */
+#line 72 "syntax.y" /* yacc.c:1646  */
+    {tree_insert(myTag, &(yyval.node_ptr),(yyloc), 1, (yyvsp[0].node_ptr));}
+#line 1584 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 20:
-#line 107 "syntax.y" /* yacc.c:1646  */
+#line 75 "syntax.y" /* yacc.c:1646  */
     {//printf("%d1\n",(int)(intptr_t)&$$,@$); 
-		tree_insert("VarDec", &(yyval.node_ptr),(yyloc), 1, (yyvsp[0].node_ptr));
+		tree_insert(myVarDec, &(yyval.node_ptr),(yyloc), 1, (yyvsp[0].node_ptr));
 	}
-#line 1624 "syntax.tab.c" /* yacc.c:1646  */
+#line 1592 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 21:
-#line 110 "syntax.y" /* yacc.c:1646  */
-    {tree_insert("VarDec", &(yyval.node_ptr),(yyloc), 4, (yyvsp[-3].node_ptr), (yyvsp[-2].node_ptr), (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
-#line 1630 "syntax.tab.c" /* yacc.c:1646  */
+#line 78 "syntax.y" /* yacc.c:1646  */
+    {tree_insert(myVarDec, &(yyval.node_ptr),(yyloc), 4, (yyvsp[-3].node_ptr), (yyvsp[-2].node_ptr), (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
+#line 1598 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 22:
-#line 111 "syntax.y" /* yacc.c:1646  */
+#line 79 "syntax.y" /* yacc.c:1646  */
     {}
-#line 1636 "syntax.tab.c" /* yacc.c:1646  */
+#line 1604 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 23:
-#line 113 "syntax.y" /* yacc.c:1646  */
-    {tree_insert("FunDec", &(yyval.node_ptr),(yyloc), 4, (yyvsp[-3].node_ptr), (yyvsp[-2].node_ptr), (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
-#line 1642 "syntax.tab.c" /* yacc.c:1646  */
+#line 81 "syntax.y" /* yacc.c:1646  */
+    {tree_insert(myFunDec, &(yyval.node_ptr),(yyloc), 4, (yyvsp[-3].node_ptr), (yyvsp[-2].node_ptr), (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
+#line 1610 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 24:
-#line 114 "syntax.y" /* yacc.c:1646  */
-    {tree_insert("FunDec", &(yyval.node_ptr),(yyloc), 3, (yyvsp[-2].node_ptr), (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
-#line 1648 "syntax.tab.c" /* yacc.c:1646  */
+#line 82 "syntax.y" /* yacc.c:1646  */
+    {tree_insert(myFunDec, &(yyval.node_ptr),(yyloc), 3, (yyvsp[-2].node_ptr), (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
+#line 1616 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 25:
-#line 115 "syntax.y" /* yacc.c:1646  */
+#line 83 "syntax.y" /* yacc.c:1646  */
     {}
-#line 1654 "syntax.tab.c" /* yacc.c:1646  */
+#line 1622 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 26:
-#line 117 "syntax.y" /* yacc.c:1646  */
-    {tree_insert("VarList", &(yyval.node_ptr),(yyloc), 3, (yyvsp[-2].node_ptr), (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
-#line 1660 "syntax.tab.c" /* yacc.c:1646  */
+#line 85 "syntax.y" /* yacc.c:1646  */
+    {tree_insert(myVarList, &(yyval.node_ptr),(yyloc), 3, (yyvsp[-2].node_ptr), (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
+#line 1628 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 27:
-#line 118 "syntax.y" /* yacc.c:1646  */
-    {tree_insert("VarList", &(yyval.node_ptr),(yyloc), 1, (yyvsp[0].node_ptr));}
-#line 1666 "syntax.tab.c" /* yacc.c:1646  */
+#line 86 "syntax.y" /* yacc.c:1646  */
+    {tree_insert(myVarList, &(yyval.node_ptr),(yyloc), 1, (yyvsp[0].node_ptr));}
+#line 1634 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 28:
-#line 119 "syntax.y" /* yacc.c:1646  */
+#line 87 "syntax.y" /* yacc.c:1646  */
     {}
-#line 1672 "syntax.tab.c" /* yacc.c:1646  */
+#line 1640 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 29:
-#line 121 "syntax.y" /* yacc.c:1646  */
-    {tree_insert("ParamDec", &(yyval.node_ptr),(yyloc), 2, (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
-#line 1678 "syntax.tab.c" /* yacc.c:1646  */
+#line 89 "syntax.y" /* yacc.c:1646  */
+    {tree_insert(myParamDec, &(yyval.node_ptr),(yyloc), 2, (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
+#line 1646 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 30:
-#line 124 "syntax.y" /* yacc.c:1646  */
-    {tree_insert("CompSt", &(yyval.node_ptr),(yyloc), 4, (yyvsp[-3].node_ptr), (yyvsp[-2].node_ptr), (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
-#line 1684 "syntax.tab.c" /* yacc.c:1646  */
+#line 92 "syntax.y" /* yacc.c:1646  */
+    {tree_insert(myCompSt, &(yyval.node_ptr),(yyloc), 4, (yyvsp[-3].node_ptr), (yyvsp[-2].node_ptr), (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
+#line 1652 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 31:
-#line 125 "syntax.y" /* yacc.c:1646  */
+#line 93 "syntax.y" /* yacc.c:1646  */
     {}
-#line 1690 "syntax.tab.c" /* yacc.c:1646  */
+#line 1658 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 32:
-#line 127 "syntax.y" /* yacc.c:1646  */
-    {tree_insert("StmtList", &(yyval.node_ptr),(yyloc), 2, (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
-#line 1696 "syntax.tab.c" /* yacc.c:1646  */
+#line 95 "syntax.y" /* yacc.c:1646  */
+    {tree_insert(myStmtList, &(yyval.node_ptr),(yyloc), 2, (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
+#line 1664 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 33:
-#line 128 "syntax.y" /* yacc.c:1646  */
-    {tree_insert("StmtList", &(yyval.node_ptr),(yyloc), 0);}
-#line 1702 "syntax.tab.c" /* yacc.c:1646  */
+#line 96 "syntax.y" /* yacc.c:1646  */
+    {tree_insert(myStmtList, &(yyval.node_ptr),(yyloc), 0);}
+#line 1670 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 34:
-#line 130 "syntax.y" /* yacc.c:1646  */
-    {tree_insert("Stmt", &(yyval.node_ptr),(yyloc), 2, (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
-#line 1708 "syntax.tab.c" /* yacc.c:1646  */
+#line 98 "syntax.y" /* yacc.c:1646  */
+    {tree_insert(myStmt, &(yyval.node_ptr),(yyloc), 2, (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
+#line 1676 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 35:
-#line 131 "syntax.y" /* yacc.c:1646  */
-    {tree_insert("Stmt", &(yyval.node_ptr),(yyloc), 1, (yyvsp[0].node_ptr));}
-#line 1714 "syntax.tab.c" /* yacc.c:1646  */
+#line 99 "syntax.y" /* yacc.c:1646  */
+    {tree_insert(myStmt, &(yyval.node_ptr),(yyloc), 1, (yyvsp[0].node_ptr));}
+#line 1682 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 36:
-#line 132 "syntax.y" /* yacc.c:1646  */
-    {tree_insert("Stmt", &(yyval.node_ptr),(yyloc), 3, (yyvsp[-2].node_ptr), (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
-#line 1720 "syntax.tab.c" /* yacc.c:1646  */
+#line 100 "syntax.y" /* yacc.c:1646  */
+    {tree_insert(myStmt, &(yyval.node_ptr),(yyloc), 3, (yyvsp[-2].node_ptr), (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
+#line 1688 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 37:
-#line 133 "syntax.y" /* yacc.c:1646  */
-    {tree_insert("Stmt", &(yyval.node_ptr),(yyloc), 5, (yyvsp[-4].node_ptr), (yyvsp[-3].node_ptr), (yyvsp[-2].node_ptr), (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
-#line 1726 "syntax.tab.c" /* yacc.c:1646  */
+#line 101 "syntax.y" /* yacc.c:1646  */
+    {tree_insert(myStmt, &(yyval.node_ptr),(yyloc), 5, (yyvsp[-4].node_ptr), (yyvsp[-3].node_ptr), (yyvsp[-2].node_ptr), (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
+#line 1694 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 38:
-#line 134 "syntax.y" /* yacc.c:1646  */
-    {tree_insert("Stmt", &(yyval.node_ptr),(yyloc), 7, (yyvsp[-6].node_ptr), (yyvsp[-5].node_ptr), (yyvsp[-4].node_ptr), (yyvsp[-3].node_ptr), (yyvsp[-2].node_ptr), (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
-#line 1732 "syntax.tab.c" /* yacc.c:1646  */
+#line 102 "syntax.y" /* yacc.c:1646  */
+    {tree_insert(myStmt, &(yyval.node_ptr),(yyloc), 7, (yyvsp[-6].node_ptr), (yyvsp[-5].node_ptr), (yyvsp[-4].node_ptr), (yyvsp[-3].node_ptr), (yyvsp[-2].node_ptr), (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
+#line 1700 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 39:
-#line 135 "syntax.y" /* yacc.c:1646  */
-    {tree_insert("Stmt", &(yyval.node_ptr),(yyloc), 5, (yyvsp[-4].node_ptr), (yyvsp[-3].node_ptr), (yyvsp[-2].node_ptr), (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
-#line 1738 "syntax.tab.c" /* yacc.c:1646  */
+#line 103 "syntax.y" /* yacc.c:1646  */
+    {tree_insert(myStmt, &(yyval.node_ptr),(yyloc), 5, (yyvsp[-4].node_ptr), (yyvsp[-3].node_ptr), (yyvsp[-2].node_ptr), (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
+#line 1706 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 40:
-#line 136 "syntax.y" /* yacc.c:1646  */
+#line 104 "syntax.y" /* yacc.c:1646  */
     {}
-#line 1744 "syntax.tab.c" /* yacc.c:1646  */
+#line 1712 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 41:
-#line 137 "syntax.y" /* yacc.c:1646  */
+#line 105 "syntax.y" /* yacc.c:1646  */
     {}
-#line 1750 "syntax.tab.c" /* yacc.c:1646  */
+#line 1718 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 42:
-#line 140 "syntax.y" /* yacc.c:1646  */
-    {tree_insert("DefList", &(yyval.node_ptr),(yyloc), 2, (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
-#line 1756 "syntax.tab.c" /* yacc.c:1646  */
+#line 108 "syntax.y" /* yacc.c:1646  */
+    {tree_insert(myDefList, &(yyval.node_ptr),(yyloc), 2, (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
+#line 1724 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 43:
-#line 141 "syntax.y" /* yacc.c:1646  */
-    {tree_insert("DefList", &(yyval.node_ptr),(yyloc), 0);}
-#line 1762 "syntax.tab.c" /* yacc.c:1646  */
+#line 109 "syntax.y" /* yacc.c:1646  */
+    {tree_insert(myDefList, &(yyval.node_ptr),(yyloc), 0);}
+#line 1730 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 44:
-#line 143 "syntax.y" /* yacc.c:1646  */
-    {tree_insert("Def", &(yyval.node_ptr),(yyloc), 3, (yyvsp[-2].node_ptr), (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
-#line 1768 "syntax.tab.c" /* yacc.c:1646  */
+#line 111 "syntax.y" /* yacc.c:1646  */
+    {tree_insert(myDef, &(yyval.node_ptr),(yyloc), 3, (yyvsp[-2].node_ptr), (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
+#line 1736 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 45:
-#line 144 "syntax.y" /* yacc.c:1646  */
+#line 112 "syntax.y" /* yacc.c:1646  */
     {}
-#line 1774 "syntax.tab.c" /* yacc.c:1646  */
+#line 1742 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 46:
-#line 146 "syntax.y" /* yacc.c:1646  */
-    {tree_insert("DecList", &(yyval.node_ptr),(yyloc), 1, (yyvsp[0].node_ptr));}
-#line 1780 "syntax.tab.c" /* yacc.c:1646  */
+#line 114 "syntax.y" /* yacc.c:1646  */
+    {tree_insert(myDecList, &(yyval.node_ptr),(yyloc), 1, (yyvsp[0].node_ptr));}
+#line 1748 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 47:
-#line 147 "syntax.y" /* yacc.c:1646  */
-    {tree_insert("DecList", &(yyval.node_ptr),(yyloc), 3, (yyvsp[-2].node_ptr), (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
-#line 1786 "syntax.tab.c" /* yacc.c:1646  */
+#line 115 "syntax.y" /* yacc.c:1646  */
+    {tree_insert(myDecList, &(yyval.node_ptr),(yyloc), 3, (yyvsp[-2].node_ptr), (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
+#line 1754 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 48:
-#line 148 "syntax.y" /* yacc.c:1646  */
+#line 116 "syntax.y" /* yacc.c:1646  */
     {}
-#line 1792 "syntax.tab.c" /* yacc.c:1646  */
+#line 1760 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 49:
-#line 150 "syntax.y" /* yacc.c:1646  */
-    {tree_insert("Dec", &(yyval.node_ptr),(yyloc), 1, (yyvsp[0].node_ptr));}
-#line 1798 "syntax.tab.c" /* yacc.c:1646  */
+#line 118 "syntax.y" /* yacc.c:1646  */
+    {tree_insert(myDec, &(yyval.node_ptr),(yyloc), 1, (yyvsp[0].node_ptr));}
+#line 1766 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 50:
-#line 151 "syntax.y" /* yacc.c:1646  */
-    {tree_insert("Dec", &(yyval.node_ptr),(yyloc), 3, (yyvsp[-2].node_ptr), (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
-#line 1804 "syntax.tab.c" /* yacc.c:1646  */
+#line 119 "syntax.y" /* yacc.c:1646  */
+    {tree_insert(myDec, &(yyval.node_ptr),(yyloc), 3, (yyvsp[-2].node_ptr), (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
+#line 1772 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 51:
-#line 152 "syntax.y" /* yacc.c:1646  */
+#line 120 "syntax.y" /* yacc.c:1646  */
     {}
-#line 1810 "syntax.tab.c" /* yacc.c:1646  */
+#line 1778 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 52:
-#line 155 "syntax.y" /* yacc.c:1646  */
-    {tree_insert("Exp", &(yyval.node_ptr),(yyloc), 3, (yyvsp[-2].node_ptr), (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
-#line 1816 "syntax.tab.c" /* yacc.c:1646  */
+#line 123 "syntax.y" /* yacc.c:1646  */
+    {tree_insert(myExp, &(yyval.node_ptr),(yyloc), 3, (yyvsp[-2].node_ptr), (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
+#line 1784 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 53:
-#line 156 "syntax.y" /* yacc.c:1646  */
-    {tree_insert("Exp", &(yyval.node_ptr),(yyloc), 3, (yyvsp[-2].node_ptr), (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
-#line 1822 "syntax.tab.c" /* yacc.c:1646  */
+#line 124 "syntax.y" /* yacc.c:1646  */
+    {tree_insert(myExp, &(yyval.node_ptr),(yyloc), 3, (yyvsp[-2].node_ptr), (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
+#line 1790 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 54:
-#line 157 "syntax.y" /* yacc.c:1646  */
-    {tree_insert("Exp", &(yyval.node_ptr),(yyloc), 3, (yyvsp[-2].node_ptr), (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
-#line 1828 "syntax.tab.c" /* yacc.c:1646  */
+#line 125 "syntax.y" /* yacc.c:1646  */
+    {tree_insert(myExp, &(yyval.node_ptr),(yyloc), 3, (yyvsp[-2].node_ptr), (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
+#line 1796 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 55:
-#line 158 "syntax.y" /* yacc.c:1646  */
-    {tree_insert("Exp", &(yyval.node_ptr),(yyloc), 3, (yyvsp[-2].node_ptr), (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
-#line 1834 "syntax.tab.c" /* yacc.c:1646  */
+#line 126 "syntax.y" /* yacc.c:1646  */
+    {tree_insert(myExp, &(yyval.node_ptr),(yyloc), 3, (yyvsp[-2].node_ptr), (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
+#line 1802 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 56:
-#line 159 "syntax.y" /* yacc.c:1646  */
-    {tree_insert("Exp", &(yyval.node_ptr),(yyloc), 3, (yyvsp[-2].node_ptr), (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
-#line 1840 "syntax.tab.c" /* yacc.c:1646  */
+#line 127 "syntax.y" /* yacc.c:1646  */
+    {tree_insert(myExp, &(yyval.node_ptr),(yyloc), 3, (yyvsp[-2].node_ptr), (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
+#line 1808 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 57:
-#line 160 "syntax.y" /* yacc.c:1646  */
-    {tree_insert("Exp", &(yyval.node_ptr),(yyloc), 3, (yyvsp[-2].node_ptr), (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
-#line 1846 "syntax.tab.c" /* yacc.c:1646  */
+#line 128 "syntax.y" /* yacc.c:1646  */
+    {tree_insert(myExp, &(yyval.node_ptr),(yyloc), 3, (yyvsp[-2].node_ptr), (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
+#line 1814 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 58:
-#line 161 "syntax.y" /* yacc.c:1646  */
-    {tree_insert("Exp", &(yyval.node_ptr),(yyloc), 3, (yyvsp[-2].node_ptr), (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
-#line 1852 "syntax.tab.c" /* yacc.c:1646  */
+#line 129 "syntax.y" /* yacc.c:1646  */
+    {tree_insert(myExp, &(yyval.node_ptr),(yyloc), 3, (yyvsp[-2].node_ptr), (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
+#line 1820 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 59:
-#line 162 "syntax.y" /* yacc.c:1646  */
-    {tree_insert("Exp", &(yyval.node_ptr),(yyloc), 3, (yyvsp[-2].node_ptr), (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
-#line 1858 "syntax.tab.c" /* yacc.c:1646  */
+#line 130 "syntax.y" /* yacc.c:1646  */
+    {tree_insert(myExp, &(yyval.node_ptr),(yyloc), 3, (yyvsp[-2].node_ptr), (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
+#line 1826 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 60:
-#line 163 "syntax.y" /* yacc.c:1646  */
-    {tree_insert("Exp", &(yyval.node_ptr),(yyloc), 3, (yyvsp[-2].node_ptr), (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
-#line 1864 "syntax.tab.c" /* yacc.c:1646  */
+#line 131 "syntax.y" /* yacc.c:1646  */
+    {tree_insert(myExp, &(yyval.node_ptr),(yyloc), 3, (yyvsp[-2].node_ptr), (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
+#line 1832 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 61:
-#line 164 "syntax.y" /* yacc.c:1646  */
-    {tree_insert("Exp", &(yyval.node_ptr),(yyloc), 2, (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
-#line 1870 "syntax.tab.c" /* yacc.c:1646  */
+#line 132 "syntax.y" /* yacc.c:1646  */
+    {tree_insert(myExp, &(yyval.node_ptr),(yyloc), 2, (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
+#line 1838 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 62:
-#line 165 "syntax.y" /* yacc.c:1646  */
-    {tree_insert("Exp", &(yyval.node_ptr),(yyloc), 2, (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
-#line 1876 "syntax.tab.c" /* yacc.c:1646  */
+#line 133 "syntax.y" /* yacc.c:1646  */
+    {tree_insert(myExp, &(yyval.node_ptr),(yyloc), 2, (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
+#line 1844 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 63:
-#line 166 "syntax.y" /* yacc.c:1646  */
-    {tree_insert("Exp", &(yyval.node_ptr),(yyloc), 4, (yyvsp[-3].node_ptr), (yyvsp[-2].node_ptr), (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
-#line 1882 "syntax.tab.c" /* yacc.c:1646  */
+#line 134 "syntax.y" /* yacc.c:1646  */
+    {tree_insert(myExp, &(yyval.node_ptr),(yyloc), 4, (yyvsp[-3].node_ptr), (yyvsp[-2].node_ptr), (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
+#line 1850 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 64:
-#line 167 "syntax.y" /* yacc.c:1646  */
-    {tree_insert("Exp", &(yyval.node_ptr),(yyloc), 3, (yyvsp[-2].node_ptr), (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
-#line 1888 "syntax.tab.c" /* yacc.c:1646  */
+#line 135 "syntax.y" /* yacc.c:1646  */
+    {tree_insert(myExp, &(yyval.node_ptr),(yyloc), 3, (yyvsp[-2].node_ptr), (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
+#line 1856 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 65:
-#line 168 "syntax.y" /* yacc.c:1646  */
+#line 136 "syntax.y" /* yacc.c:1646  */
     {
-		tree_insert("Exp", &(yyval.node_ptr),(yyloc), 4, (yyvsp[-3].node_ptr), (yyvsp[-2].node_ptr), (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));
-		(yyval.node_ptr)->val_type = (yyvsp[-3].node_ptr)->val_type;
-
+		tree_insert(myExp, &(yyval.node_ptr),(yyloc), 4, (yyvsp[-3].node_ptr), (yyvsp[-2].node_ptr), (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));
 	}
-#line 1898 "syntax.tab.c" /* yacc.c:1646  */
+#line 1864 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 66:
-#line 173 "syntax.y" /* yacc.c:1646  */
-    {tree_insert("Exp", &(yyval.node_ptr),(yyloc), 3, (yyvsp[-2].node_ptr), (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
-#line 1904 "syntax.tab.c" /* yacc.c:1646  */
+#line 139 "syntax.y" /* yacc.c:1646  */
+    {tree_insert(myExp, &(yyval.node_ptr),(yyloc), 3, (yyvsp[-2].node_ptr), (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
+#line 1870 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 67:
-#line 174 "syntax.y" /* yacc.c:1646  */
-    {tree_insert("Exp", &(yyval.node_ptr),(yyloc), 1, (yyvsp[0].node_ptr));}
-#line 1910 "syntax.tab.c" /* yacc.c:1646  */
+#line 140 "syntax.y" /* yacc.c:1646  */
+    {tree_insert(myExp, &(yyval.node_ptr),(yyloc), 1, (yyvsp[0].node_ptr));}
+#line 1876 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 68:
-#line 175 "syntax.y" /* yacc.c:1646  */
+#line 141 "syntax.y" /* yacc.c:1646  */
     {
-		tree_insert("Exp", &(yyval.node_ptr),(yyloc), 1, (yyvsp[0].node_ptr));
-		(yyval.node_ptr)->val_type = INT_TYPE;
+		tree_insert(myExp, &(yyval.node_ptr),(yyloc), 1, (yyvsp[0].node_ptr));
 	}
-#line 1919 "syntax.tab.c" /* yacc.c:1646  */
+#line 1884 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 69:
-#line 179 "syntax.y" /* yacc.c:1646  */
+#line 144 "syntax.y" /* yacc.c:1646  */
     {
-		tree_insert("Exp", &(yyval.node_ptr),(yyloc), 1, (yyvsp[0].node_ptr)); 
-		(yyval.node_ptr)->val_type = FLOAT_TYPE;
+		tree_insert(myExp, &(yyval.node_ptr),(yyloc), 1, (yyvsp[0].node_ptr)); 
 	}
-#line 1928 "syntax.tab.c" /* yacc.c:1646  */
+#line 1892 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 70:
-#line 183 "syntax.y" /* yacc.c:1646  */
+#line 147 "syntax.y" /* yacc.c:1646  */
     {}
-#line 1934 "syntax.tab.c" /* yacc.c:1646  */
+#line 1898 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 71:
-#line 184 "syntax.y" /* yacc.c:1646  */
+#line 148 "syntax.y" /* yacc.c:1646  */
     {}
-#line 1940 "syntax.tab.c" /* yacc.c:1646  */
+#line 1904 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 72:
-#line 186 "syntax.y" /* yacc.c:1646  */
-    {tree_insert("Args", &(yyval.node_ptr),(yyloc), 3, (yyvsp[-2].node_ptr), (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
-#line 1946 "syntax.tab.c" /* yacc.c:1646  */
+#line 150 "syntax.y" /* yacc.c:1646  */
+    {tree_insert(myArgs, &(yyval.node_ptr),(yyloc), 3, (yyvsp[-2].node_ptr), (yyvsp[-1].node_ptr), (yyvsp[0].node_ptr));}
+#line 1910 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
   case 73:
-#line 187 "syntax.y" /* yacc.c:1646  */
-    {tree_insert("Args", &(yyval.node_ptr),(yyloc), 1, (yyvsp[0].node_ptr));}
-#line 1952 "syntax.tab.c" /* yacc.c:1646  */
+#line 151 "syntax.y" /* yacc.c:1646  */
+    {tree_insert(myArgs, &(yyval.node_ptr),(yyloc), 1, (yyvsp[0].node_ptr));}
+#line 1916 "syntax.tab.c" /* yacc.c:1646  */
     break;
 
 
-#line 1956 "syntax.tab.c" /* yacc.c:1646  */
+#line 1920 "syntax.tab.c" /* yacc.c:1646  */
       default: break;
     }
   /* User semantic actions sometimes alter yychar, and that requires
@@ -2187,185 +2151,9 @@ yyreturn:
 #endif
   return yyresult;
 }
-#line 189 "syntax.y" /* yacc.c:1906  */
+#line 153 "syntax.y" /* yacc.c:1906  */
 
-
-struct sym_t{
-	struct sym_t *nxt;
-	char cVal[33];
-	int id_type;//VAR_TYPE or FUN_TYPE
-	int val_type;//INT_TYPE or FLOAT_TYPE
-};
-typedef struct sym_t sym_t;
-#define MAX_ENV_DEEP 1024
-sym_t *envStack[MAX_ENV_DEEP];
-sym_t *Tail[MAX_ENV_DEEP];
-int envTop=0;
-sym_t *curEnv=NULL;
-void subTree_traverse(node_t* cur);
-
-void tree_traverse(){
-	Tail[envTop] = curEnv = envStack[0] = NULL;
-	subTree_traverse(root);
-}
-
-#define VAR_TYPE 0
-#define FUN_TYPE 1
-#define CUR_MODE 0
-#define ALL_MODE 1
-sym_t *search_table(const char *cVal, int mode, int id_type){
-	sym_t *env=NULL;
-	switch(mode){
-		case ALL_MODE:
-			for(int i=envTop; i>=0; i--){
-				env = envStack[i];
-				if(env==NULL) continue;
-				while(env->nxt!=NULL){
-					if(strcmp(env->cVal, cVal)==0&&id_type==env->id_type)
-						return env;
-					env = env->nxt;
-				}
-				if(strcmp(env->cVal, cVal)==0&&id_type==env->id_type)
-					return env;
-			}
-			break;
-		case CUR_MODE: 
-			env = curEnv;
-			if(env==NULL) break;
-			while(env->nxt!=NULL){
-				if(strcmp(env->cVal, cVal)==0&&id_type==env->id_type)
-					return env;
-				env = env->nxt;
-			}
-			if(strcmp(env->cVal, cVal)==0&&id_type==env->id_type)
-				return env;
-			break;
-		default : break;
-	}
-	return NULL;
-}
-
-void insert_symbol(const char*cVal, int id_type){
-	/*insert val into current symbol table*/
-	sym_t *tail = Tail[envTop];
-	//assert(curEnv == envStack[envTop]);
-	sym_t *env = NULL;
-	if(curEnv==NULL){
-		Tail[envTop] = curEnv = envStack[envTop] = malloc(sizeof(sym_t));
-		env = curEnv;
-	}
-	else{
-		tail->nxt = malloc(sizeof(sym_t));
-		Tail[envTop] = tail->nxt;
-		env = tail->nxt;
-	}
-	env->nxt = NULL;
-    env->id_type = id_type;
-	strcpy(env->cVal, cVal);
-}	
-
-void pt_semantic_error(int errnum, int lineno,const char *cVal){
-	switch(errnum){
-		case 1:
-			fprintf(stderr, "Error type %d at Line %d: Undefined variable \"%s\".\n",errnum, lineno, cVal);
-			break;
-		case 2:
-			fprintf(stderr, "Error type %d at Line %d: Undefined function \"%s\".\n",errnum, lineno, cVal);
-			break;
-		case 3:
-			fprintf(stderr, "Error type %d at Line %d: Redefined variable \"%s\".\n",errnum, lineno, cVal);
-			break;
-		case 4:
-			fprintf(stderr, "Error type %d at Line %d: Redefined function \"%s\".\n",errnum, lineno, cVal);
-			break;
-		case 5:
-			break;
-		case 6:
-			break;
-		case 7:
-			break;
-		case 8:
-			break;
-		case 9:
-			break;
-		case 10:
-			break;
-		case 11:
-			break;
-		case 12:
-			break;
-		case 13:
-			break;
-		case 14:
-			break;
-		case 15:
-			break;
-		case 16:
-			break;
-		case 17:
-			break;
-		case 18:
-			break;
-		case 19:
-			break;
-		default:
-			assert(0);
-	}
-}
-
-void subTree_traverse(node_t* cur){
-	//DFS, traverse child node
-	//printf("name:%s\n",cur->name);
-	if(cur->child!=NULL){
-		//change symbol table
-		if(strcmp(cur->name,"CompSt")==0){
-			//create symbol table
-			envTop++; 
-			Tail[envTop] = curEnv = envStack[envTop] = NULL;
-			subTree_traverse(cur->child);
-			//delete symbol table
-			envTop--;
-			curEnv = envStack[envTop];
-		}else{
-			subTree_traverse(cur->child);
-		}
-	}
-	//printf("1\n");
-	//insert symbol table
-	if(strcmp(cur->name,"VarDec")==0 && strcmp(cur->child->name,"ID")==0){
-		sym_t *p = search_table(cur->child->cVal, CUR_MODE, VAR_TYPE);
-		if(p!=NULL)
-			pt_semantic_error(3, cur->child->lineno, cur->child->cVal);
-		else{
-			insert_symbol(cur->child->cVal, VAR_TYPE);
-		}
-	}else if(strcmp(cur->name,"FunDec")==0){
-		sym_t *p = search_table(cur->child->cVal, CUR_MODE, FUN_TYPE);
-		if(p!=NULL) 
-			pt_semantic_error(4, cur->child->lineno, cur->child->cVal);
-		else{
-			insert_symbol(cur->child->cVal, FUN_TYPE);
-		}
-	}
-	//printf("2\n");
-	//search symbol table
-	if(strcmp(cur->name,"Exp")==0 && strcmp(cur->child->name,"ID")==0){
-		if(cur->child->bro==NULL){
-			sym_t *p = search_table(cur->child->cVal, ALL_MODE, VAR_TYPE);
-			if(p==NULL) pt_semantic_error(1, cur->child->lineno, cur->child->cVal);
-		}else{
-			sym_t *p = search_table(cur->child->cVal, ALL_MODE, FUN_TYPE);
-			if(p==NULL) pt_semantic_error(2, cur->child->lineno, cur->child->cVal);
-		}
-	}else if(1){
-	
-	}
-	//traverse brother node
-	if(cur->bro!=NULL)
-		subTree_traverse(cur->bro);
-}
-
-void tree_insert(char *name, node_t** fa,YYLTYPE linetype, int n_arg, ...){
+void tree_insert(int syntype, node_t** fa,YYLTYPE linetype, int n_arg, ...){
 	if(error_flg) return;
 	va_list args;
 	va_start(args, n_arg);
@@ -2376,7 +2164,7 @@ void tree_insert(char *name, node_t** fa,YYLTYPE linetype, int n_arg, ...){
 	cur->bro = NULL;
 	cur->mode = (n_arg>0) ? 0 : -1;//mode<0 means empty unit
 	cur->lineno = linetype.first_line;
-	strcpy(cur->name, name);
+	cur->syntype = syntype;
 	for(int i=0; i<n_arg; i++){
 		node_t *nxt = va_arg(args, node_t*); 
 		//printf("  nxt:[%s], line:%d\n",nxt->name, nxt->lineno);
@@ -2398,7 +2186,7 @@ void pSubTree(node_t* cur, int depth){
 	//space
 	for(int i=0; i<depth; i++) printf("  ");
 	//empty case
-	printf("%s",cur->name);
+	printf("%s",mytname[cur->syntype]);
 	//case
 	switch(cur->mode/4){
 		case 0: printf(" (%d)\n",cur->lineno); break;
