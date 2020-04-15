@@ -1,6 +1,10 @@
 %locations
 %error-verbose
 %{
+
+#define INT_TYPE 0
+#define FLOAT_TYPE 1
+#define STR_TYPE 2
 struct node_t{
 	struct node_t *child, *bro;
 	char name[16];
@@ -9,6 +13,12 @@ struct node_t{
 		int iVal;
 		float fVal;
 		char cVal[33];
+	};
+	/*Lab2*/
+	int val_type;
+	union{
+		int arg_num;//function args num
+		int arr_dim;//array dimension
 	};
 };
 typedef struct node_t node_t;
@@ -155,11 +165,21 @@ Exp : Exp ASSIGNOP Exp  {tree_insert("Exp", &$$,@$, 3, $1, $2, $3);}
 	| NOT Exp  {tree_insert("Exp", &$$,@$, 2, $1, $2);}
 	| ID LP Args RP {tree_insert("Exp", &$$,@$, 4, $1, $2, $3, $4);}
 	| ID LP RP {tree_insert("Exp", &$$,@$, 3, $1, $2, $3);}
-	| Exp LB Exp RB {tree_insert("Exp", &$$,@$, 4, $1, $2, $3, $4);}
+	| Exp LB Exp RB {
+		tree_insert("Exp", &$$,@$, 4, $1, $2, $3, $4);
+		$$->val_type = $1->val_type;
+
+	}
 	| Exp DOT ID {tree_insert("Exp", &$$,@$, 3, $1, $2, $3);}
 	| ID  {tree_insert("Exp", &$$,@$, 1, $1);}
-	| INT  {tree_insert("Exp", &$$,@$, 1, $1);}
-	| FLOAT  {tree_insert("Exp", &$$,@$, 1, $1);}
+	| INT  {
+		tree_insert("Exp", &$$,@$, 1, $1);
+		$$->val_type = INT_TYPE;
+	}
+	| FLOAT  {
+		tree_insert("Exp", &$$,@$, 1, $1); 
+		$$->val_type = FLOAT_TYPE;
+	}
 	| Exp LB error RB {}
 	| error RP {}
 	;
@@ -171,7 +191,8 @@ Args : Exp COMMA Args {tree_insert("Args", &$$,@$, 3, $1, $2, $3);}
 struct sym_t{
 	struct sym_t *nxt;
 	char cVal[33];
-	int type;
+	int id_type;//VAR_TYPE or FUN_TYPE
+	int val_type;//INT_TYPE or FLOAT_TYPE
 };
 typedef struct sym_t sym_t;
 #define MAX_ENV_DEEP 1024
@@ -186,9 +207,11 @@ void tree_traverse(){
 	subTree_traverse(root);
 }
 
+#define VAR_TYPE 0
+#define FUN_TYPE 1
 #define CUR_MODE 0
 #define ALL_MODE 1
-sym_t *search_table(char *cVal, int mode){
+sym_t *search_table(const char *cVal, int mode, int id_type){
 	sym_t *env=NULL;
 	switch(mode){
 		case ALL_MODE:
@@ -196,11 +219,11 @@ sym_t *search_table(char *cVal, int mode){
 				env = envStack[i];
 				if(env==NULL) continue;
 				while(env->nxt!=NULL){
-					if(strcmp(env->cVal, cVal)==0)
+					if(strcmp(env->cVal, cVal)==0&&id_type==env->id_type)
 						return env;
 					env = env->nxt;
 				}
-				if(strcmp(env->cVal, cVal)==0)
+				if(strcmp(env->cVal, cVal)==0&&id_type==env->id_type)
 					return env;
 			}
 			break;
@@ -208,11 +231,11 @@ sym_t *search_table(char *cVal, int mode){
 			env = curEnv;
 			if(env==NULL) break;
 			while(env->nxt!=NULL){
-				if(strcmp(env->cVal, cVal)==0)
+				if(strcmp(env->cVal, cVal)==0&&id_type==env->id_type)
 					return env;
 				env = env->nxt;
 			}
-			if(strcmp(env->cVal, cVal)==0)
+			if(strcmp(env->cVal, cVal)==0&&id_type==env->id_type)
 				return env;
 			break;
 		default : break;
@@ -220,9 +243,7 @@ sym_t *search_table(char *cVal, int mode){
 	return NULL;
 }
 
-#define VAR_TYPE 0
-#define FUN_TYPE 1
-void insert_symbol(const char*cVal, int type){
+void insert_symbol(const char*cVal, int id_type){
 	/*insert val into current symbol table*/
 	sym_t *tail = Tail[envTop];
 	//assert(curEnv == envStack[envTop]);
@@ -237,9 +258,58 @@ void insert_symbol(const char*cVal, int type){
 		env = tail->nxt;
 	}
 	env->nxt = NULL;
-    env->type = type;
+    env->id_type = id_type;
 	strcpy(env->cVal, cVal);
 }	
+
+void pt_semantic_error(int errnum, int lineno,const char *cVal){
+	switch(errnum){
+		case 1:
+			fprintf(stderr, "Error type %d at Line %d: Undefined variable \"%s\".\n",errnum, lineno, cVal);
+			break;
+		case 2:
+			fprintf(stderr, "Error type %d at Line %d: Undefined function \"%s\".\n",errnum, lineno, cVal);
+			break;
+		case 3:
+			fprintf(stderr, "Error type %d at Line %d: Redefined variable \"%s\".\n",errnum, lineno, cVal);
+			break;
+		case 4:
+			fprintf(stderr, "Error type %d at Line %d: Redefined function \"%s\".\n",errnum, lineno, cVal);
+			break;
+		case 5:
+			break;
+		case 6:
+			break;
+		case 7:
+			break;
+		case 8:
+			break;
+		case 9:
+			break;
+		case 10:
+			break;
+		case 11:
+			break;
+		case 12:
+			break;
+		case 13:
+			break;
+		case 14:
+			break;
+		case 15:
+			break;
+		case 16:
+			break;
+		case 17:
+			break;
+		case 18:
+			break;
+		case 19:
+			break;
+		default:
+			assert(0);
+	}
+}
 
 void subTree_traverse(node_t* cur){
 	//DFS, traverse child node
@@ -261,25 +331,33 @@ void subTree_traverse(node_t* cur){
 	//printf("1\n");
 	//insert symbol table
 	if(strcmp(cur->name,"VarDec")==0 && strcmp(cur->child->name,"ID")==0){
-		sym_t *p = search_table(cur->child->cVal, CUR_MODE);
-		//printf("2\n");
-		if(p!=NULL) 	 
-			fprintf(stderr, "Error type 3 at Line %d: Redefined variable \"%s\".\n", cur->child->lineno, cur->child->cVal);
+		sym_t *p = search_table(cur->child->cVal, CUR_MODE, VAR_TYPE);
+		if(p!=NULL)
+			pt_semantic_error(3, cur->child->lineno, cur->child->cVal);
 		else{
 			insert_symbol(cur->child->cVal, VAR_TYPE);
+		}
+	}else if(strcmp(cur->name,"FunDec")==0){
+		sym_t *p = search_table(cur->child->cVal, CUR_MODE, FUN_TYPE);
+		if(p!=NULL) 
+			pt_semantic_error(4, cur->child->lineno, cur->child->cVal);
+		else{
+			insert_symbol(cur->child->cVal, FUN_TYPE);
 		}
 	}
 	//printf("2\n");
 	//search symbol table
 	if(strcmp(cur->name,"Exp")==0 && strcmp(cur->child->name,"ID")==0){
-		sym_t *p = search_table(cur->child->cVal, ALL_MODE);
-		if(p==NULL)
-			fprintf(stderr, "Error type 1 at Line %d: Undefined variable \"%s\".\n", cur->child->lineno, cur->child->cVal);
-		else{
-			//assert(0);
+		if(cur->child->bro==NULL){
+			sym_t *p = search_table(cur->child->cVal, ALL_MODE, VAR_TYPE);
+			if(p==NULL) pt_semantic_error(1, cur->child->lineno, cur->child->cVal);
+		}else{
+			sym_t *p = search_table(cur->child->cVal, ALL_MODE, FUN_TYPE);
+			if(p==NULL) pt_semantic_error(2, cur->child->lineno, cur->child->cVal);
 		}
+	}else if(1){
+	
 	}
-	//printf("3\n");
 	//traverse brother node
 	if(cur->bro!=NULL)
 		subTree_traverse(cur->bro);
