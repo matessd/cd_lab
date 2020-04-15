@@ -1,4 +1,8 @@
 #include"myhead.h"
+struct FieldList{
+	int a;
+};
+typedef struct FieldList FieldList;
 struct sym_t{
 	struct sym_t *nxt;
 	char cVal[33];
@@ -16,13 +20,13 @@ sym_t *envStack[MAX_ENV_DEEP];
 sym_t *Tail[MAX_ENV_DEEP];
 int envTop=0;
 sym_t *curEnv=NULL;
-void subTree_traverse(node_t* cur);
+void subTree_DFS(node_t* cur);
 
 sym_t Sym_tmp;//for passing value
-void tree_traverse(){
+void DFS(){
 	Sym_tmp.nxt = NULL;
 	Tail[envTop] = curEnv = envStack[0] = NULL;
-	subTree_traverse(root);
+	subTree_DFS(root);
 }
 enum{CUR_MODE, ALL_MODE};
 sym_t *search_table(const char *cVal, int mode, int id_type){
@@ -56,24 +60,6 @@ sym_t *search_table(const char *cVal, int mode, int id_type){
 	}
 	return NULL;
 }
-
-void insert_symbol(){
-	/*insert val into current symbol table*/
-	sym_t *tail = Tail[envTop];
-	//assert(curEnv == envStack[envTop]);
-	sym_t *env = NULL;
-	if(curEnv==NULL){
-		Tail[envTop] = curEnv = envStack[envTop] = malloc(sizeof(sym_t));
-		env = curEnv;
-	}
-	else{
-		tail->nxt = malloc(sizeof(sym_t));
-		Tail[envTop] = tail->nxt;
-		env = tail->nxt;
-	}
-	*env = Sym_tmp;
-	env->nxt = NULL;
-}	
 
 void pt_semantic_error(int errnum, int lineno,const char *cVal){
 	switch(errnum){
@@ -124,7 +110,46 @@ void pt_semantic_error(int errnum, int lineno,const char *cVal){
 	}
 }
 
+void insert_symbol(int lineno){
+	//check redefine
+	pf3(insert);
+	sym_t *p = NULL;
+	switch(Sym_tmp.id_type){
+	  case VAR_TYPE:
+	    p = search_table(Sym_tmp.cVal, CUR_MODE, VAR_TYPE);
+        if(p!=NULL){
+		  pt_semantic_error(3, lineno, Sym_tmp.cVal);
+		  return;
+		}
+	    break;
+	  case FUN_TYPE:
+	    p = search_table(Sym_tmp.cVal, CUR_MODE, FUN_TYPE);
+        if(p!=NULL){
+		  pt_semantic_error(4, lineno, Sym_tmp.cVal);
+		  return;
+		}
+	    break;
+	  default: break;
+	}
+	/*insert val into current symbol table*/
+	sym_t *tail = Tail[envTop];
+	//assert(curEnv == envStack[envTop]);
+	sym_t *env = NULL;
+	if(curEnv==NULL){
+		Tail[envTop] = curEnv = envStack[envTop] = malloc(sizeof(sym_t));
+		env = curEnv;
+	}
+	else{
+		tail->nxt = malloc(sizeof(sym_t));
+		Tail[envTop] = tail->nxt;
+		env = tail->nxt;
+	}
+	*env = Sym_tmp;
+	env->nxt = NULL;
+}
+
 int VarDec_DFS(node_t *cur){
+	pf3(VarDec);
 	node_t *child = cur->child;
 	if(child->syntype==myID){
 		strcpy(Sym_tmp.cVal, child->cVal);
@@ -134,11 +159,31 @@ int VarDec_DFS(node_t *cur){
 	Sym_tmp.arr_dim++;
 }
 
+int count_VarList(node_t *cur){
+	pf3(VarList);
+	node_t *child = cur->child;//ParamDec
+	if(child->bro==NULL) return 1;
+	else return count_VarList(child->bro->bro)+1;
+}
+
+void FunDec_DFS(node_t *cur){
+	pf3(FunDec);
+	node_t *child = cur->child;
+	strcpy(Sym_tmp.cVal, child->cVal);//ID
+	if(child->bro->bro->syntype==myVarList){
+		//no args
+		Sym_tmp.arg_num = count_VarList(child->bro->bro);
+	}else{
+		Sym_tmp.arg_num = 0;
+	}
+}
+
 void ExtDecList_DFS(node_t *cur){
+	pf3(ExtDecList);
 	node_t *child = cur->child;//VarDec
 	Sym_tmp.arr_dim = -1;
 	VarDec_DFS(child);
-	insert_symbol();
+	insert_symbol(child->lineno);
 	if(child->bro!=NULL){
 		node_t *p = child->bro->bro;
 		ExtDecList_DFS(p);
@@ -146,13 +191,14 @@ void ExtDecList_DFS(node_t *cur){
 }
 
 void ExtDef_DFS(node_t *cur){
+	pf3(ExtDef);
 	node_t *child = cur->child;//Specifier
 	node_t *gchild = child->child;//TYPE or StructSpecifier
 	//int val_type = -1;
 	//node_t *p =NULL;
 	if(gchild->syntype==myTYPE){
 		//INT or FLOAT
-		Sym_tmp.val_type = (gchild->child->syntype==myINT)?INT_TYPE:FLOAT_TYPE;
+		Sym_tmp.val_type = (strcmp(gchild->cVal,"int")==0)?INT_TYPE:FLOAT_TYPE;
 		switch(child->bro->syntype){
 		  case myExtDecList:
 		    Sym_tmp.id_type = VAR_TYPE;
@@ -160,16 +206,19 @@ void ExtDef_DFS(node_t *cur){
 			break;
 		  case myFunDec:
 		    Sym_tmp.id_type = FUN_TYPE;
+			FunDec_DFS(child->bro);
+			insert_symbol(child->bro->lineno);
 			break;
 		  default: break;
 		}
 	}else{
 		Sym_tmp.val_type = STR_TYPE;
+		//TODO
 	}
 }
 
-void insert_module(node_t* cur){
-	/*part of subTree_traverse*/
+/*void insert_module(node_t* cur){
+	//part of subTree_traverse
 	//VarDec
 	if(cur->syntype==myVarDec && cur->child->syntype==myID){
 		sym_t *p = search_table(cur->child->cVal, CUR_MODE, VAR_TYPE);
@@ -188,9 +237,46 @@ void insert_module(node_t* cur){
 			insert_symbol(cur->child->cVal, FUN_TYPE);
 		}
 	}
+}*/
+
+void Dec_DFS(node_t *cur){
+	pf3(Dec);
+	node_t *child = cur->child;
+	VarDec_DFS(child);
+	insert_symbol(child->lineno);
+	if(child->bro!=NULL){
+		//ASSIGNOP
+		//TODO
+	}
 }
 
-void subTree_traverse(node_t* cur){
+void DecList_DFS(node_t *cur){
+	pf3(DecList);
+	node_t *child = cur->child;
+	if(child->bro!=NULL){//COMMA
+		Dec_DFS(child);//Dec
+		DecList_DFS(child->bro->bro);
+	}else{
+		Dec_DFS(child);
+	}
+}
+
+void Def_DFS(node_t *cur){
+	pf3(Def);
+	node_t *child = cur->child;//Specifier
+	node_t *gchild = child->child;//TYPE or StructSpecifier
+	Sym_tmp.id_type = VAR_TYPE;
+	if(gchild->syntype==myTYPE){
+		//INT or FLOAT
+		Sym_tmp.val_type = (strcmp(gchild->cVal,"int")==0)?INT_TYPE:FLOAT_TYPE;
+        DecList_DFS(child->bro);
+	}else{
+		Sym_tmp.val_type = STR_TYPE;
+		//TODO
+	}
+}
+
+void subTree_DFS(node_t* cur){
 	//DFS, traverse child node
 	if(cur->child!=NULL){
 		//change symbol table
@@ -198,16 +284,22 @@ void subTree_traverse(node_t* cur){
 			//create symbol table
 			envTop++; 
 			Tail[envTop] = curEnv = envStack[envTop] = NULL;
-			subTree_traverse(cur->child);
+			subTree_DFS(cur->child);
 			//delete symbol table
 			envTop--;
 			curEnv = envStack[envTop];
 		}else{
-			subTree_traverse(cur->child);
+			subTree_DFS(cur->child);
 		}
 	}
 	//insert symbol table
-	insert_module(cur);
+	switch(cur->syntype){
+	  case myExtDef: ExtDef_DFS(cur);
+	    break;
+	  case myDef: Def_DFS(cur);
+	    break;
+	  default: break;
+	}
 	//search symbol table
 	if(cur->syntype==myExp && cur->child->syntype==myID){
 		if(cur->child->bro==NULL){
@@ -222,5 +314,5 @@ void subTree_traverse(node_t* cur){
 	}
 	//traverse brother node
 	if(cur->bro!=NULL)
-		subTree_traverse(cur->bro);
+		subTree_DFS(cur->bro);
 }

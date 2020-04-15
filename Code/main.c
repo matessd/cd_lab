@@ -5,7 +5,7 @@ extern int yyparse(void);
 extern int yylineno;
 extern int error_flg;
 //extern void pTree();
-extern void tree_traverse();
+extern void DFS();
 //extern int yydebug;
 int main(int argc, char** argv) {
 	if(argc <= 1) return 1;
@@ -20,7 +20,7 @@ int main(int argc, char** argv) {
 	yyrestart(f);
 	yyparse();
 	//pTree();
-	tree_traverse();
+	DFS();
 	return 0;
 }
 

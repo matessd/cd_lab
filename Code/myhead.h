@@ -63,3 +63,9 @@ struct node_t{
 };
 typedef struct node_t node_t;
 node_t *root;
+//#define MY_SEMANTIC_DEBUG
+#ifdef MY_SEMANTIC_DEBUG
+#define pf3(x) printf("%s\n", #x)
+#else
+#define pf3(x) 
+#endif
