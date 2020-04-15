@@ -39,7 +39,7 @@ run:
 	flex lexical.l
 	gcc -g main.c syntax.tab.c -lfl -ly -o ../parser 
 test: 
-	./../parser ../workdir/a.cmm>out
+	./../parser ../workdir/a.cmm
 test1:
 	./../parser ../Tests/L1-A-12-48.cmm
 clean:

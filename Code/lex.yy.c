@@ -1046,7 +1046,7 @@ YY_RULE_SETUP
 #line 62 "lexical.l"
 { 
 		error_flg = 1;
-		fprintf(stderr, "Error type A at Line %d: Mysterious character \"%c\"\n", yylineno, yytext[0]); 
+		fprintf(stderr, "Error type A at Line %d: Mysterious character \"%c\".\n", yylineno, yytext[0]); 
 	} 
 	YY_BREAK
 case 36:

@@ -61,7 +61,7 @@ digit [0-9]
 ";" { pf(SEMI); INIT_node_t("SEMI", MODE1); return SEMI; }
 .	{ 
 		error_flg = 1;
-		fprintf(stderr, "Error type A at Line %d: Mysterious character \"%c\"\n.", yylineno, yytext[0]); 
+		fprintf(stderr, "Error type A at Line %d: Mysterious character \"%c\".\n", yylineno, yytext[0]); 
 	} 
 
 %%

@@ -83,7 +83,7 @@ typedef struct node_t node_t;
 int error_flg;
 void yyerror(const char* msg){
 	error_flg=1;
-	fprintf(stderr, "Error type B at Line %d: %s\n", yylineno, msg);
+	fprintf(stderr, "Error type B at Line %d: %s.\n", yylineno, msg);
 }
 #define MY_BISON_DEBUG
 #ifdef MY_BISON_DEBUG
@@ -2171,15 +2171,121 @@ yyreturn:
 
 
 struct sym_t{
-	char name[33];
+	struct sym_t *nxt;
+	char cVal[33];
 	int type;
 };
 typedef struct sym_t sym_t;
 #define MAX_ENV_DEEP 1024
 sym_t *envStack[MAX_ENV_DEEP];
+sym_t *Tail[MAX_ENV_DEEP];
 int envTop=0;
-sym_t *cur_env=NULL;
+sym_t *curEnv=NULL;
+void subTree_traverse(node_t* cur);
 
+void tree_traverse(){
+	Tail[envTop] = curEnv = envStack[0] = NULL;
+	subTree_traverse(root);
+}
+
+#define CUR_MODE 0
+#define ALL_MODE 1
+sym_t *search_table(char *cVal, int mode){
+	sym_t *env=NULL;
+	switch(mode){
+		case ALL_MODE:
+			for(int i=envTop; i>=0; i--){
+				env = envStack[i];
+				if(env==NULL) continue;
+				while(env->nxt!=NULL){
+					if(strcmp(env->cVal, cVal)==0)
+						return env;
+					env = env->nxt;
+				}
+				if(strcmp(env->cVal, cVal)==0)
+					return env;
+			}
+			break;
+		case CUR_MODE: 
+			env = curEnv;
+			if(env==NULL) break;
+			while(env->nxt!=NULL){
+				if(strcmp(env->cVal, cVal)==0)
+					return env;
+				env = env->nxt;
+			}
+			if(strcmp(env->cVal, cVal)==0)
+				return env;
+			break;
+		default : break;
+	}
+	return NULL;
+}
+
+#define VAR_TYPE 0
+#define FUN_TYPE 1
+void insert_symbol(const char*cVal, int type){
+	/*insert val into current symbol table*/
+	sym_t *tail = Tail[envTop];
+	//assert(curEnv == envStack[envTop]);
+	sym_t *env = NULL;
+	if(curEnv==NULL){
+		Tail[envTop] = curEnv = envStack[envTop] = malloc(sizeof(sym_t));
+		env = curEnv;
+	}
+	else{
+		tail->nxt = malloc(sizeof(sym_t));
+		Tail[envTop] = tail->nxt;
+		env = tail->nxt;
+	}
+	env->nxt = NULL;
+    env->type = type;
+	strcpy(env->cVal, cVal);
+}	
+
+void subTree_traverse(node_t* cur){
+	//DFS, traverse child node
+	//printf("name:%s\n",cur->name);
+	if(cur->child!=NULL){
+		//change symbol table
+		if(strcmp(cur->name,"CompSt")==0){
+			//create symbol table
+			envTop++; 
+			Tail[envTop] = curEnv = envStack[envTop] = NULL;
+			subTree_traverse(cur->child);
+			//delete symbol table
+			envTop--;
+			curEnv = envStack[envTop];
+		}else{
+			subTree_traverse(cur->child);
+		}
+	}
+	//printf("1\n");
+	//insert symbol table
+	if(strcmp(cur->name,"VarDec")==0 && strcmp(cur->child->name,"ID")==0){
+		sym_t *p = search_table(cur->child->cVal, CUR_MODE);
+		//printf("2\n");
+		if(p!=NULL) 	 
+			fprintf(stderr, "Error type 3 at Line %d: Redefined variable \"%s\".\n", cur->child->lineno, cur->child->cVal);
+		else{
+			insert_symbol(cur->child->cVal, VAR_TYPE);
+		}
+	}
+	//printf("2\n");
+	//search symbol table
+	if(strcmp(cur->name,"Exp")==0 && strcmp(cur->child->name,"ID")==0){
+		sym_t *p = search_table(cur->child->cVal, ALL_MODE);
+		if(p==NULL)
+			fprintf(stderr, "Error type 1 at Line %d: Undefined variable \"%s\".\n", cur->child->lineno, cur->child->cVal);
+		else{
+			//assert(0);
+		}
+	}
+	//printf("3\n");
+	//traverse brother node
+	if(cur->bro!=NULL)
+		subTree_traverse(cur->bro);
+}
 
 void tree_insert(char *name, node_t** fa,YYLTYPE linetype, int n_arg, ...){
 	if(error_flg) return;
