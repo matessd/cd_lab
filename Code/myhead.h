@@ -51,6 +51,10 @@ static const char *const mytname[] =
   "Dec", "Exp", "Args"
 };
 
+struct FieldList{
+	int a;
+};
+typedef struct FieldList FieldList;
 struct node_t{
 	struct node_t *child, *bro;
 	int syntype;
@@ -59,6 +63,13 @@ struct node_t{
 		int iVal;
 		float fVal;
 		char cVal[33];
+	};
+	/*Lab2*/
+	int val_type;
+	union{
+		int arr_dim;//array dimension
+		int arg_num;//args number of function
+		FieldList *stru;//field for structure
 	};
 };
 typedef struct node_t node_t;
