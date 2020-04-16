@@ -51,10 +51,8 @@ static const char *const mytname[] =
   "Dec", "Exp", "Args"
 };
 
-struct FieldList{
-	int a;
-};
-typedef struct FieldList FieldList;
+typedef struct node_t node_t;
+#define sym_t node_t
 struct node_t{
 	struct node_t *child, *bro;
 	int syntype;
@@ -65,14 +63,25 @@ struct node_t{
 		char cVal[33];
 	};
 	/*Lab2*/
-	int val_type;
+	sym_t *nxt;
+	int errflg;
+	enum{VAR_TYPE, FUN_TYPE} id_type;
+	enum{INT_TYPE, FLOAT_TYPE, STR_TYPE} val_type;
+	int arr_dim;//array dimension
+	int arg_num;//args number of function
+	struct node_t *member, *detail;
+};
+/*struct sym_t{
+	struct sym_t *nxt;
+	char cVal[33];
+	enum{VAR_TYPE, FUN_TYPE} id_type;
+	enum{INT_TYPE, FLOAT_TYPE, STR_TYPE} val_type;
 	union{
 		int arr_dim;//array dimension
 		int arg_num;//args number of function
-		FieldList *stru;//field for structure
 	};
-};
-typedef struct node_t node_t;
+	node_t *member, *detail;//detail used for define structure member
+};*/
 node_t *root;
 //#define MY_SEMANTIC_DEBUG
 #ifdef MY_SEMANTIC_DEBUG
