@@ -64,12 +64,12 @@ struct node_t{
 	};
 	/*Lab2*/
 	sym_t *nxt;
-	int errflg;
-	enum{VAR_TYPE, FUN_TYPE, STR_TYPE} id_type;
+	int errflg, vis;
+	enum{VAR_TYPE, /*FUN_TYPE*/ STR_TYPE} id_type;
 	enum{INT_TYPE, FLOAT_TYPE, STR_VAR, STR_DEF} val_type;
 	//enum{STR_VAR, STR_DEF} var_def;//instanc or definition
 	int arr_dim;//array dimension
-	int arg_num;//args number of function
+	enum{FUN_DEC, FUN_DEF}fun_flg;
 	struct node_t *member, *detail;
 };
 /*struct sym_t{

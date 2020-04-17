@@ -4,7 +4,9 @@ typedef struct sym_t sym_t;
 sym_t *envStack[MAX_ENV_DEEP];
 int envTop=0;
 sym_t *curEnv=NULL;
+sym_t *funEnv=NULL, *funDecEnv=NULL;
 void subTree_DFS(node_t *cur, int mode);
+void subTree_Exp_DFS(node_t *cur);
 node_t *Def_DFS(node_t *cur, int mode);
 node_t *StructSpecifier_DFS(node_t *cur);
 
@@ -36,6 +38,20 @@ sym_t *SearchSymList(const char *cVal, sym_t *env, int id_type){
 		  return env;
 	  }
 	}
+	return NULL;
+}
+
+sym_t *SearchFunList(const char *cVal, sym_t *env){
+	if(env==NULL) return NULL;
+	if(cVal==NULL) return NULL;
+	while(env->nxt!=NULL){
+	  //printf("%s:1\n",env->cVal);
+	  if(strcmp(env->cVal, cVal)==0)
+		return env;
+	  env = env->nxt;
+	}
+	if(strcmp(env->cVal, cVal)==0)
+	  return env;
 	return NULL;
 }
 
@@ -119,6 +135,26 @@ void pt_semantic_error(int errnum, int lineno,const char *cVal){
 	}
 }
 
+void insert_fun_symbol(int lineno, sym_t *pSym, sym_t **fenv){
+	node_t *p1 = SearchFunList(pSym->cVal, funEnv);
+    if(p1!=NULL){
+		pt_semantic_error(4, lineno, pSym->cVal);
+		return;
+	}
+	sym_t *env =NULL, *nxt = NULL;
+	if(*fenv==NULL){
+		env = *fenv = malloc(sizeof(sym_t));
+		nxt = NULL;
+	}
+	else{
+		env = malloc(sizeof(sym_t));
+		nxt = *fenv;
+		*fenv = env;
+	}
+	*env = *pSym;
+	env->nxt = nxt;
+}
+
 enum{LOCAL_MODE, OVER_MODE};//current scope and overall scope
 void insert_symbol(int mode, int lineno, sym_t *pSym){
 	//check redefine
@@ -133,13 +169,14 @@ void insert_symbol(int mode, int lineno, sym_t *pSym){
 		  return;
 		}
 	    break;
-	  case FUN_TYPE:
+	  /*case FUN_TYPE:
 	    p1 = search_table(pSym->cVal, ALL_MODE, FUN_TYPE);
         if(p1!=NULL){
 		  pt_semantic_error(4, lineno, pSym->cVal);
 		  return;
 		}
 	    break;
+	  */	
 	  case STR_TYPE:
 	    p1 = search_table(pSym->cVal, ALL_MODE, VAR_TYPE);
 		p2 = search_table(pSym->cVal, ALL_MODE, STR_TYPE); 
@@ -272,6 +309,9 @@ int Type_op(int optype, node_t* p1, node_t *p2){
 		  break;
 		//2
 		case ASSIGN_OP:
+		  //printf("%s----%s\n",p1->cVal,p2->cVal);
+		  //printf("%d----%d\n",p1->id_type,p2->id_type);
+		  //printf("%d----%d\n",p1->val_type,p2->val_type);
 		  errflg = Type_cmp(p1,p2);
 		  if(errflg)
 			pt_semantic_error(5, p1->lineno, NULL);
@@ -299,7 +339,7 @@ void Type_cpy(int errflg, node_t *dst, node_t *src){
 		dst->id_type = src->id_type;
 		dst->val_type = src->val_type;
 		dst->arr_dim = src->arr_dim;//union?
-		dst->arg_num = src->arg_num;
+		//dst->arg_num = src->arg_num;
 		dst->detail = src->detail;
 		dst->member = src->member;
 	}else{
@@ -346,6 +386,7 @@ node_t *Dec_DFS(node_t *cur, sym_t *type, int val_type, int mode){
 		//TODO
 		if(mode==STR_MODE)
 			pt_semantic_error(15, child->lineno, child->cVal);
+		subTree_Exp_DFS(child->bro->bro);
 		int errflg = Type_op(ASSIGN_OP, child, child->bro->bro);
 		Type_cpy(errflg, child, child->bro->bro);
 	}
@@ -437,6 +478,7 @@ int sub_check_str_scope(node_t *p1, node_t *p2){
 
 int check_str_scope(node_t *type){
 	if(type==NULL) return 0;
+	if(type->member==NULL) return 0;
 	type = type->member;
 	//printf("1\n");
 	while(type->member!=NULL){
@@ -472,20 +514,26 @@ node_t *StructSpecifier_DFS(node_t *cur){
 		p->detail = p->member = NULL;
 		p->val_type = STR_DEF;
 		//p->arrdim = -1;
+		//printf("3\n");
 		if(child->bro->syntype==myOptTag){
+			//printf("4\n");
 			strcpy(p->cVal,child->bro->child->cVal);
+			//printf("%s\n",child->bro->bro->bro->cVal);
 			if(child->bro->bro->bro->syntype == myDefList){
 			  p->member = DefList_DFS(child->bro->bro->bro, STR_MODE);
 			}else{
 			  //struct a{}
 			}
 			insert_symbol(OVER_MODE, child->bro->lineno, p);
+			//printf("2\n");
 		}else{
 			//unknown name
 			p->cVal[0] = '\0';
+			//printf("1\n");
 			if(child->bro->bro->syntype == myDefList){
 			  p->member = DefList_DFS(child->bro->bro, STR_MODE);
 			}else{
+			  //printf("2\n");
 			  //struct {}
 			  return p;
 			}
@@ -544,18 +592,19 @@ node_t *VarList_DFS(node_t *cur){
 	return p1; 
 }
 
-void FunDec_DFS(node_t *cur, node_t* type, int val_type){
+void FunDec_DFS(node_t *cur, node_t* type, int val_type, int fun_flg){
 	node_t *child = cur->child;//ID
 	strcpy(cur->cVal, child->cVal);
 	//printf("1\n");
 	cur->detail = cur->member = NULL;
-	cur->id_type = FUN_TYPE;
 	//val_type
 	if(type==NULL){
 		cur->val_type = val_type;
+		cur->id_type = VAR_TYPE;
 	}else{
 		cur->detail = type; 
 		cur->val_type = STR_VAR;
+		cur->id_type = STR_TYPE;
 	}
 	//new sym table
 	envTop++; 
@@ -566,6 +615,10 @@ void FunDec_DFS(node_t *cur, node_t* type, int val_type){
 		//no args
 		cur->member = NULL;
 	}
+	/*if(fun_flg==FUN_DEC){
+		envTop--;
+		curEnv = envStack[envTop] = NULL;
+	}*/
 }
 
 void ExtDecList_DFS(node_t *cur, node_t *type, int val_type){
@@ -601,6 +654,7 @@ void ExtDef_DFS(node_t *cur){
 		//StructSpecifier
 		//may be NULL
 		type = StructSpecifier_DFS(gchild);  
+		//printf("1\n");
 		if(type==NULL) return;
 	}
 	switch(child->bro->syntype){
@@ -608,8 +662,14 @@ void ExtDef_DFS(node_t *cur){
 		ExtDecList_DFS(child->bro, type, val_type);
 	    break;
 	  case myFunDec:
-		FunDec_DFS(child->bro, type, val_type);
-		insert_symbol(OVER_MODE, child->bro->lineno, child->bro);
+		if(child->bro->bro->syntype==mySEMI){
+			FunDec_DFS(child->bro, type, val_type, FUN_DEC);
+			insert_fun_symbol(child->bro->lineno, child->bro, &funDecEnv);
+		}
+		else{
+			FunDec_DFS(child->bro, type, val_type, FUN_DEF);
+			insert_fun_symbol(child->bro->lineno, child->bro, &funEnv);
+		}
 		break;
 	  default: break;
 	}
@@ -630,8 +690,9 @@ node_t *search_field(char *cVal, node_t *cur){
 
 void Exp_DFS(node_t *cur){
 	//printf("%s:1\n",mytname[cur->child->syntype]);
+	cur->vis = 1;
 	node_t *child = cur->child;
-	sym_t *p = NULL, *p1=NULL, *p2=NULL;
+	sym_t *p = NULL, *p1=NULL, *p2=NULL, *p3=NULL;
 	int errflg = 0;
 	switch(child->syntype){
 	  case myID:
@@ -646,7 +707,7 @@ void Exp_DFS(node_t *cur){
 				}
 			}
 		}else{
-			p = search_table(child->cVal, ALL_MODE, FUN_TYPE);
+			p = SearchFunList(child->cVal, funEnv);
 			p1 = search_table(child->cVal, ALL_MODE, VAR_TYPE);
 			p2 = search_table(child->cVal, ALL_MODE, STR_TYPE);
 			if(p1!=NULL ||p2!=NULL){
@@ -654,8 +715,11 @@ void Exp_DFS(node_t *cur){
 				errflg = 1;
 			}
 			else if(p==NULL) {
-				pt_semantic_error(2, child->lineno, child->cVal);
-				errflg = 1;
+				p3 = SearchFunList(child->cVal, funDecEnv);
+				if(p3==NULL){
+					pt_semantic_error(2, child->lineno, child->cVal);
+					errflg = 1;
+				}
 			}else if(child->bro->bro->syntype==myArgs){
 				if(Args_cmp(p->member, child->bro->bro->child)!=0){
 					pt_semantic_error(9, child->lineno, child->cVal);
@@ -768,12 +832,24 @@ node_t *Args_DFS(node_t *cur){
 
 void RETURN_DFS(node_t *cur){
 	node_t *bro = cur->bro;
-	sym_t *psym = search_table(NULL, ALL_MODE, FUN_TYPE);
+	sym_t *psym = funEnv;
 	//printf("%s:%d\n",psym->cVal,psym->arr_dim);
 	//printf("%s:%d\n",bro->cVal,bro->arr_dim);
     if(Type_cmp(psym, bro)!=0){
 		pt_semantic_error(8, cur->lineno, NULL);
 	}	
+}
+
+void subTree_Exp_DFS(node_t *cur){
+	//myassert(cur->syntype==myExp);
+	if(cur->child!=NULL)
+		subTree_Exp_DFS(cur->child);
+	if(cur->syntype==myExp){
+		Exp_DFS(cur);
+		cur->vis = 1;
+	}
+	if(cur->bro!=NULL)
+		subTree_Exp_DFS(cur->bro);
 }
 
 void subTree_DFS(node_t* cur, int mode){
@@ -786,7 +862,7 @@ void subTree_DFS(node_t* cur, int mode){
 	//DFS, traverse child node
 	if(cur->child!=NULL){
 		//change symbol table
-		if(cur->syntype==myCompSt){
+		if(cur->syntype==myCompSt || (cur->syntype==mySEMI && mode==1)){
 			//create symbol table
 			if(mode==0){
 				envTop++; 
@@ -803,9 +879,26 @@ void subTree_DFS(node_t* cur, int mode){
 			subTree_DFS(cur->child, 0);
 		}
 	}
+	/*if(cur->child!=NULL){
+		//change symbol table
+		if(cur->syntype==myCompSt){
+			//create symbol table
+			if(mode==0){
+				envTop++; 
+				curEnv = envStack[envTop] = NULL;
+			}
+			subTree_DFS(cur->child, 0);
+			//delete symbol table
+			envTop--;
+			curEnv = envStack[envTop];
+		}else{
+			subTree_DFS(cur->child, 0);
+		}
+	}*/
 	//printf("%s:2\n",mytname[cur->syntype]);
 	switch(cur->syntype){
-	  case myExp: Exp_DFS(cur);
+	  case myExp: 
+		if(cur->vis==0) Exp_DFS(cur);
 	    break;
 	  case myStmt: 
 		if(cur->child->syntype==myRETURN){
@@ -815,6 +908,9 @@ void subTree_DFS(node_t* cur, int mode){
 	  case myArgs: 
 		Args_DFS(cur);
 		break;
+	  //case myDefList:
+	    //DefList_DFS(cur, VAR_MODE);	
+		//break;
 	  default: break;
 	}
 	//traverse brother node

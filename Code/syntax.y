@@ -53,6 +53,7 @@ ExtDefList : ExtDef ExtDefList { tree_insert(myExtDefList, &$$,@$, 2, $1, $2); }
 ExtDef : Specifier ExtDecList SEMI { tree_insert(myExtDef, &$$,@$, 3, $1, $2, $3);}
 	| Specifier SEMI {tree_insert(myExtDef, &$$,@$, 2, $1, $2);}
 	| Specifier FunDec CompSt {tree_insert(myExtDef, &$$,@$, 3, $1, $2, $3);}
+	| Specifier FunDec SEMI {tree_insert(myExtDef, &$$, @$, 3, $1, $2, $3);}
 	| Specifier error LC {}
 	;
 ExtDecList : VarDec {tree_insert(myExtDecList, &$$,@$, 1, $1);}
@@ -163,6 +164,11 @@ void tree_insert(int syntype, node_t** fa,YYLTYPE linetype, int n_arg, ...){
 	cur->mode = (n_arg>0) ? 0 : -1;//mode<0 means empty unit
 	cur->lineno = linetype.first_line;
 	cur->syntype = syntype;
+
+	//lab2
+	if(syntype==myExp)
+		cur->vis = 0;
+
 	for(int i=0; i<n_arg; i++){
 		node_t *nxt = va_arg(args, node_t*); 
 		//printf("  nxt:[%s], line:%d\n",nxt->name, nxt->lineno);

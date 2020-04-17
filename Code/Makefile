@@ -35,9 +35,9 @@ syntax-c: $(YFILE)
 .PHONY: clean test mytest
 run:
 	make clean
-	bison -d -v syntax.y
+	bison -d syntax.y
 	flex lexical.l
-	gcc -g main.c syntax.tab.c semantic.c -lfl -ly -o ../parser 
+	gcc main.c syntax.tab.c semantic.c -lfl -ly -o ../parser 
 test: 
 	./../parser ../workdir/a.cmm
 test1:
