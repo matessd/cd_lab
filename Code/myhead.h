@@ -66,8 +66,8 @@ struct node_t{
 	sym_t *nxt;
 	int errflg;
 	enum{VAR_TYPE, FUN_TYPE, STR_TYPE} id_type;
-	enum{INT_TYPE, FLOAT_TYPE} val_type;
-	enum{STR_VAR, STR_DEF} var_def;//instanc or definition
+	enum{INT_TYPE, FLOAT_TYPE, STR_VAR, STR_DEF} val_type;
+	//enum{STR_VAR, STR_DEF} var_def;//instanc or definition
 	int arr_dim;//array dimension
 	int arg_num;//args number of function
 	struct node_t *member, *detail;
@@ -96,3 +96,4 @@ node_t *root;
 #define myassert assert
 #else
 #define myassert
+#endif
