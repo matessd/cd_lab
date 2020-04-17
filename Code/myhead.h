@@ -65,8 +65,9 @@ struct node_t{
 	/*Lab2*/
 	sym_t *nxt;
 	int errflg;
-	enum{VAR_TYPE, FUN_TYPE} id_type;
-	enum{INT_TYPE, FLOAT_TYPE, STR_TYPE} val_type;
+	enum{VAR_TYPE, FUN_TYPE, STR_TYPE} id_type;
+	enum{INT_TYPE, FLOAT_TYPE} val_type;
+	enum{STR_VAR, STR_DEF} var_def;//instanc or definition
 	int arr_dim;//array dimension
 	int arg_num;//args number of function
 	struct node_t *member, *detail;
@@ -89,3 +90,9 @@ node_t *root;
 #else
 #define pf3(x) 
 #endif
+
+#define MY_ASSERT_DEBUG
+#ifdef MY_ASSERT_DEBUG 
+#define myassert assert
+#else
+#define myassert

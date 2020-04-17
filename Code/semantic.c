@@ -4,7 +4,8 @@ typedef struct sym_t sym_t;
 sym_t *envStack[MAX_ENV_DEEP];
 int envTop=0;
 sym_t *curEnv=NULL;
-void subTree_DFS(node_t* cur);
+void subTree_DFS(node_t *cur);
+void Def_DFS(node_t *cur);
 
 sym_t Sym_tmp, Sym_tmp1;//for passing value
 void DFS(){
@@ -102,6 +103,7 @@ void pt_semantic_error(int errnum, int lineno,const char *cVal){
 		case 16:
 			break;
 		case 17:
+			fprintf(stderr, "Error type %d at Line %d: Undefined structure \"%s\".\n",errnum, lineno, cVal);
 			break;
 		case 18:
 			break;
@@ -116,19 +118,28 @@ enum{LOCAL_MODE, OVER_MODE};//current scope and overall scope
 void insert_symbol(int mode, int lineno, sym_t *pSym){
 	//check redefine
 	//printf("%d\n",lineno);
-	sym_t *p = NULL;
+	sym_t *p1 = NULL, *p2=NULL;
 	switch(pSym->id_type){
 	  case VAR_TYPE:
-	    p = search_table(pSym->cVal, CUR_MODE, VAR_TYPE);
-        if(p!=NULL){
+	    p1 = search_table(pSym->cVal, CUR_MODE, VAR_TYPE);
+		p2 = search_table(pSym->cVal, ALL_MODE, STR_TYPE); 
+        if(p1!=NULL || p2!=NULL){
 		  pt_semantic_error(3, lineno, pSym->cVal);
 		  return;
 		}
 	    break;
 	  case FUN_TYPE:
-	    p = search_table(pSym->cVal, CUR_MODE, FUN_TYPE);
-        if(p!=NULL){
+	    p1 = search_table(pSym->cVal, CUR_MODE, FUN_TYPE);
+        if(p1!=NULL){
 		  pt_semantic_error(4, lineno, pSym->cVal);
+		  return;
+		}
+	    break;
+	  case STR_TYPE:
+	    p1 = search_table(pSym->cVal, ALL_MODE, VAR_TYPE);
+		p2 = search_table(pSym->cVal, ALL_MODE, STR_TYPE); 
+        if(p1!=NULL || p2!=NULL){
+		  pt_semantic_error(16, lineno, pSym->cVal);
 		  return;
 		}
 	    break;
@@ -168,10 +179,14 @@ void insert_symbol(int mode, int lineno, sym_t *pSym){
 
 int Type_cmp(node_t *p1, node_t *p2){
 	int ret = 0;
-	if(p1->val_type==INT_TYPE || p1->val_type==FLOAT_TYPE){
+	if(p1->id_type!=STR_TYPE || p2->id_type!=STR_TYPE){
+	  if(p1->id_type!=STR_TYPE && p2->id_type!=STR_TYPE){
 		if(p1->val_type!=p2->val_type || p1->arr_dim!=p2->arr_dim)
 			ret = 1;
-	}else if(p1->val_type==STR_TYPE){
+	  }else{
+	    ret = 1;
+	  }
+	}else{
 		//TODO
 	}
 	return ret;
@@ -180,15 +195,18 @@ int Type_cmp(node_t *p1, node_t *p2){
 enum{LOGIC_OP, ASSIGN_OP, ARITH_OP};
 int Type_op(int optype, node_t* p1, node_t *p2){
 	//compare
-	if(p1->errflg || p2->errflg) return 1;//error
 	int errflg = 0;
+	if(p1->errflg) return 1;//error
+	if(p2!=NULL){
+		if(p2->errflg) return 1;
+	}
 	switch(optype){
 		//1
 		case LOGIC_OP:
-		  if(p1->val_type!=INT_TYPE || p1->arr_dim!=0)
+		  if(p1->val_type!=INT_TYPE || p1->arr_dim!=0 || p1->id_type==STR_TYPE)
 			errflg = 1;
 		  if(p2!=NULL){
-			if(p2->val_type!=INT_TYPE || p2->arr_dim!=0)
+			if(p2->val_type!=INT_TYPE || p2->arr_dim!=0 || p2->id_type==STR_TYPE)
 				errflg = 1;
 		  }
 		  if(errflg)
@@ -202,10 +220,11 @@ int Type_op(int optype, node_t* p1, node_t *p2){
 		  break;
 		//3
 		case ARITH_OP:
-		  if((p1->val_type!=INT_TYPE && p1->val_type!=FLOAT_TYPE) || p1->arr_dim!=0)
+		  //printf("1\n");
+		  if(p1->id_type==STR_TYPE || p1->arr_dim!=0)
 			errflg = 1;
 		  if(p2!=NULL){
-			if(p2->val_type!=p1->val_type || p2->arr_dim!=0)
+			if(p2->id_type==STR_TYPE || p2->val_type!=p1->val_type || p2->arr_dim!=0)
 				errflg = 1;
 		  }
 		  if(errflg)
@@ -219,6 +238,7 @@ int Type_op(int optype, node_t* p1, node_t *p2){
 void Type_cpy(int errflg,node_t *dst, node_t *src){
 	if(errflg==0){
 		dst->errflg = errflg;
+		dst->id_type = src->id_type;
 		dst->val_type = src->val_type;
 		dst->arr_dim = src->arr_dim;//union?
 	}else{
@@ -259,16 +279,57 @@ void DecList_DFS(node_t *cur){
 	}
 }
 
+node_t *DefList_DFS(sym_t *stru, node_t *cur){
+    	
+	return NULL;
+}
+
+node_t *StructSpecifier_DFS(node_t *cur){
+	sym_t *p = NULL;
+	if(cur->bro->syntype==myTag){
+		//instance
+		p = search_table(cur->bro->child->cVal, ALL_MODE, STR_TYPE);
+		if(p==NULL){
+			pt_semantic_error(17, cur->bro->lineno, cur->bro->child->cVal);
+			return NULL;
+		}else {
+			return p;
+		}
+	}else{
+		//definition
+		sym_t *stru = malloc(sizeof(sym_t));
+		stru->id_type = STR_TYPE;
+		stru->detail = stru->member = NULL;
+		stru->var_def = STR_DEF;
+		//TODO
+		if(cur->bro->syntype==myOptTag){
+			strcpy(stru->cVal)
+			if(cur->bro->bro->bro->syntype == myDefList){
+			  p = DefList_DFS(cur->bro->bro->bro);
+			  insert_symbol(OVER_MODE, cur->bro->lineno, p);
+			}else{
+			  //struct{}
+			  return stru;
+			}
+		}else{
+			//unknown name
+			p = DefList_DFS(cur->bro->bro);
+			insert_symbol(OVER_MODE, cur->bro->lineno, p);;
+		}
+	}
+	return p;
+}
+
 void Def_DFS(node_t *cur){
 	node_t *child = cur->child;//Specifier
 	node_t *gchild = child->child;//TYPE or StructSpecifier
-	Sym_tmp.id_type = VAR_TYPE;
 	if(gchild->syntype==myTYPE){
 		//INT or FLOAT
+		Sym_tmp.id_type = VAR_TYPE;
 		Sym_tmp.val_type = (strcmp(gchild->cVal,"int")==0)?INT_TYPE:FLOAT_TYPE;
         DecList_DFS(child->bro);
 	}else{
-		Sym_tmp.val_type = STR_TYPE;
+		Sym_tmp.id_type = STR_TYPE;
 		//TODO
 	}
 }
@@ -276,9 +337,9 @@ void Def_DFS(node_t *cur){
 void ParamDec_DFS(node_t *cur){
 	node_t *child = cur->child;//Specifier
 	node_t *gchild = child->child;//TYPE or StructSpecifier
-	Sym_tmp1.id_type = VAR_TYPE;
 	if(gchild->syntype==myTYPE){
 		//INT or FLOAT
+		Sym_tmp1.id_type = VAR_TYPE;
 		Sym_tmp1.val_type = (strcmp(gchild->cVal,"int")==0)?INT_TYPE:FLOAT_TYPE;
 		Sym_tmp1.arr_dim = -1;
 		VarDec_DFS(child->bro, &Sym_tmp1);
@@ -286,8 +347,8 @@ void ParamDec_DFS(node_t *cur){
 		insert_symbol(LOCAL_MODE, child->bro->lineno, &Sym_tmp1);
 	}else{
 		//StructSpecifier
-		/*Sym_tmp1.val_type = STR_TYPE;
-		Sym_tmp1.arr_dim = -1;
+		Sym_tmp1.id_type = STR_TYPE;
+		/*Sym_tmp1.arr_dim = -1;
 		VarDec_DFS(child->bro, &Sym_tmp1);
 		node_t *pstru = gchild->child;//Struct
 		node_t *p = NULL;
@@ -366,19 +427,26 @@ void ExtDef_DFS(node_t *cur){
 		  default: break;
 		}
 	}else{
-		Sym_tmp.val_type = STR_TYPE;
+		//StructSpecifier
+		Sym_tmp.id_type = STR_TYPE;
+		//StructSpecifier_DFS(gchild);
 		//TODO
 	}
 }
 
 void Exp_DFS(node_t *cur){
+	//printf("%s:1\n",mytname[cur->child->syntype]);
 	node_t *child = cur->child;
 	sym_t *p = NULL;
 	switch(child->syntype){
 	  case myID:
 		if(child->bro==NULL){
 			p = search_table(child->cVal, ALL_MODE, VAR_TYPE);
-			if(p==NULL) pt_semantic_error(1, child->lineno, child->cVal);
+			//printf("%s\n",child->cVal);
+			if(p==NULL) {
+				p = search_table(child->cVal, ALL_MODE, STR_TYPE);
+				if(p==NULL) pt_semantic_error(1, child->lineno, child->cVal);
+			}
 		}else{
 			p = search_table(child->cVal, ALL_MODE, FUN_TYPE);
 			if(p==NULL) pt_semantic_error(2, child->lineno, child->cVal);
@@ -425,8 +493,11 @@ void Exp_DFS(node_t *cur){
 		Type_cpy(child->errflg, cur, child);
 	    break;
 	  case myMINUS:
+		//printf("1\n");
 		cur->errflg = Type_op(ARITH_OP, child->bro, NULL);
+		//printf("2\n");
 		Type_cpy(cur->errflg, cur, child->bro);
+		//printf("3\n");
 	    break;
 	  case myNOT:
 		cur->errflg = Type_op(LOGIC_OP, child->bro, NULL);
@@ -440,6 +511,7 @@ void Exp_DFS(node_t *cur){
 	    break;
 	  default: break;
 	}
+	//printf("2\n");
 }
 
 void RETURN_DFS(node_t *cur){
@@ -453,6 +525,7 @@ void RETURN_DFS(node_t *cur){
 }
 
 void subTree_DFS(node_t* cur){
+	//printf("%s:1\n",mytname[cur->syntype]);
 	switch(cur->syntype){
 	  case myExtDef: ExtDef_DFS(cur);
 	    break;
@@ -475,6 +548,7 @@ void subTree_DFS(node_t* cur){
 			subTree_DFS(cur->child);
 		}
 	}
+	//printf("%s:2\n",mytname[cur->syntype]);
 	switch(cur->syntype){
 	  case myExp: Exp_DFS(cur);
 	    break;
