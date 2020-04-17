@@ -102,6 +102,7 @@ void pt_semantic_error(int errnum, int lineno,const char *cVal){
 			fprintf(stderr, "Error type %d at Line %d: Non-existent field \"%s\".\n",errnum, lineno, cVal);
 			break;
 		case 15:
+			fprintf(stderr, "Error type %d at Line %d: Redefined or initial in field \"%s\".\n",errnum, lineno, cVal);
 			break;
 		case 16:
 			fprintf(stderr, "Error type %d at Line %d: Duplicated name \"%s\".\n",errnum, lineno, cVal);
@@ -226,8 +227,10 @@ int Type_cmp(node_t *p1, node_t *p2){
 }
 
 int Args_cmp(node_t *p1, node_t *p2){
+	//printf("1\n");
 	if(p1==NULL || p2==NULL) return 1;
-	myassert(p1->val_type==STR_VAR && p2->val_type==STR_VAR);
+	//printf("2\n");
+	//myassert(p1->val_type==STR_VAR && p2->val_type==STR_VAR);
 	if(p1==p2) return 0;//same structure name
 	while(p1->member!=NULL && p2->member!=NULL){
 		if(Type_cmp(p1,p2)!=0)
@@ -235,8 +238,15 @@ int Args_cmp(node_t *p1, node_t *p2){
 		p1 = p1->member;
 		p2 = p2->member;
 	}
+	//printf("3\n");
+	if(p1->member==NULL&&p2->member==NULL){
+		return 0;
+	}else{
+		return 1;
+	}
 	if(Type_cmp(p1,p2)!=0)
 			return 1;
+	//printf("4\n");
 	return 0;
  }
 
@@ -408,10 +418,35 @@ node_t *DefList_DFS(node_t *cur, int mode){
 	return p1;
 }
 
+int sub_check_str_scope(node_t *p1, node_t *p2){
+	int ret = 0;
+	myassert(p1!=NULL && p2!=NULL);
+	while(p2->member!=NULL){
+		if(strcmp(p1->cVal,p2->cVal)==0){
+			pt_semantic_error(15, p2->lineno, p2->cVal);
+			return 1;
+		}
+		p2=p2->member;
+	}
+	if(strcmp(p1->cVal, p2->cVal)==0){
+		pt_semantic_error(15, p2->lineno, p2->cVal);
+		return 1;
+	}
+	return 0;
+}
+
 int check_str_scope(node_t *type){
-	//while(type->member!=NULL){
-		
-	//}
+	if(type==NULL) return 0;
+	type = type->member;
+	//printf("1\n");
+	while(type->member!=NULL){
+		if (sub_check_str_scope(type, type->member)==1){
+			return 1;
+		}
+		//printf("2\n");
+		type = type->member;
+	}
+	//printf("2\n");
 	return 0;
 } 
 
@@ -456,8 +491,10 @@ node_t *StructSpecifier_DFS(node_t *cur){
 			}
 		}
 		//TODO
-		if(check_str_scope(p)!=0) 
+		if(check_str_scope(p)!=0){ 
+			//printf("1\n");
 			return NULL;
+		}
 	}
 	return p;
 }
@@ -603,11 +640,8 @@ void Exp_DFS(node_t *cur){
 			//printf("%s\n",child->cVal);
 			if(p==NULL) {
 				p = search_table(child->cVal, ALL_MODE, STR_TYPE);
-				if(p==NULL) pt_semantic_error(1, child->lineno, child->cVal);
-			}
-			if(child->bro->bro->syntype==myArgs){
-				if(Args_cmp(child->member, child->bro->bro->child)!=0){
-					pt_semantic_error(9, child->lineno, child->cVal);
+				if(p==NULL) {
+					pt_semantic_error(1, child->lineno, child->cVal);
 					errflg = 1;
 				}
 			}
@@ -615,8 +649,19 @@ void Exp_DFS(node_t *cur){
 			p = search_table(child->cVal, ALL_MODE, FUN_TYPE);
 			p1 = search_table(child->cVal, ALL_MODE, VAR_TYPE);
 			p2 = search_table(child->cVal, ALL_MODE, STR_TYPE);
-			if(p1!=NULL ||p2!=NULL) pt_semantic_error(11, child->lineno, child->cVal);
-			else if(p==NULL) pt_semantic_error(2, child->lineno, child->cVal);
+			if(p1!=NULL ||p2!=NULL){
+				pt_semantic_error(11, child->lineno, child->cVal);
+				errflg = 1;
+			}
+			else if(p==NULL) {
+				pt_semantic_error(2, child->lineno, child->cVal);
+				errflg = 1;
+			}else if(child->bro->bro->syntype==myArgs){
+				if(Args_cmp(p->member, child->bro->bro->child)!=0){
+					pt_semantic_error(9, child->lineno, child->cVal);
+					errflg = 1;
+				}
+			}
 		}
 		if(p!=NULL){
 			Type_cpy(errflg, cur, p);
@@ -669,8 +714,9 @@ void Exp_DFS(node_t *cur){
 		}else if(child->bro->syntype==myDOT){
 			//printf("%d\n",child->val_type);
 			if(child->val_type!=STR_VAR){
+				//printf("%s--%s\n",child->cVal,child->bro->bro->cVal);
 				pt_semantic_error(13, child->lineno, NULL);
-				cur->errflg = 1;
+				errflg = 1;
 				break;
 			}
 			p = search_field(child->bro->bro->cVal, child);
@@ -737,7 +783,6 @@ void subTree_DFS(node_t* cur, int mode){
 	    break;
 	  default: break;
 	}
-	//printf("2\n");
 	//DFS, traverse child node
 	if(cur->child!=NULL){
 		//change symbol table
