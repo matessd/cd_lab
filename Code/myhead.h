@@ -91,9 +91,43 @@ node_t *root;
 #define pf3(x) 
 #endif
 
-#define MY_ASSERT_DEBUG
+//#define MY_ASSERT_DEBUG
 #ifdef MY_ASSERT_DEBUG 
 #define myassert assert
 #else
 #define myassert
 #endif
+
+/*Lab3*/
+/*definition of operand number*/
+struct Operand{
+	enum{VARIABLE, CONSTANT, ADDRESS} kind;
+	union{
+		int val_no;
+		int value;
+	}u;
+};
+typedef struct Operand Operand;
+/*a line of intercode*/
+struct InterCode{
+	/*DIV redeclaration*/
+	enum{ASSIGN, ADD, SUB, MUL} kind;
+	union{
+		struct {Operand left, right;} assisn;
+		struct {Operand result, op1, op2;} binop;
+	}u;
+};
+typedef struct InterCode InterCode;
+/*link-list for intercodes*/
+struct InterCodes{
+	InterCode code;
+	struct InterCodes *prev, *next;
+};
+typedef struct InterCodes InterCodes;
+/**/
+struct VarNode{
+	char cVal[33];//variable name
+	int var_no;//corresponding count, like v1,v2,v3,...
+	struct VarNode *next;
+};
+typedef struct VarNode VarNode;

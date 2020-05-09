@@ -852,6 +852,9 @@ void subTree_Exp_DFS(node_t *cur){
 		subTree_Exp_DFS(cur->bro);
 }
 
+extern VarNode *g_VarTable;
+void deal_env_lab3();
+
 void subTree_DFS(node_t* cur, int mode){
 	//printf("%s:1\n",mytname[cur->syntype]);
 	switch(cur->syntype){
@@ -872,6 +875,10 @@ void subTree_DFS(node_t* cur, int mode){
 				DefList_DFS(cur->child->bro, VAR_MODE);
 			}
 			subTree_DFS(cur->child, 0);
+
+			//lab3 need a variable table
+			deal_env_lab3();
+
 			//delete symbol table
 			envTop--;
 			curEnv = envStack[envTop];
@@ -879,22 +886,6 @@ void subTree_DFS(node_t* cur, int mode){
 			subTree_DFS(cur->child, 0);
 		}
 	}
-	/*if(cur->child!=NULL){
-		//change symbol table
-		if(cur->syntype==myCompSt){
-			//create symbol table
-			if(mode==0){
-				envTop++; 
-				curEnv = envStack[envTop] = NULL;
-			}
-			subTree_DFS(cur->child, 0);
-			//delete symbol table
-			envTop--;
-			curEnv = envStack[envTop];
-		}else{
-			subTree_DFS(cur->child, 0);
-		}
-	}*/
 	//printf("%s:2\n",mytname[cur->syntype]);
 	switch(cur->syntype){
 	  case myExp: 
@@ -920,3 +911,19 @@ void subTree_DFS(node_t* cur, int mode){
 		else subTree_DFS(cur->bro, 0);
 	}
 }
+
+extern VarTable_insert(char *cVal);//in file intercode.c
+/*to copy deleted table to VarTable, useful in Lab3*/
+void deal_env_lab3(){
+	sym_t *cur = curEnv;
+	while(cur->nxt!=NULL){
+		sym_t *nxt = cur->nxt;
+		VarTable_insert(cur->cVal);
+		free(cur);
+		cur = nxt;
+	}
+	VarTable_insert(cur->cVal);
+	free(cur);
+}
+
+
