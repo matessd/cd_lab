@@ -912,7 +912,7 @@ void subTree_DFS(node_t* cur, int mode){
 	}
 }
 
-extern VarTable_insert(char *cVal);//in file intercode.c
+extern int VarTable_insert(const char *cVal);//in file intercode.c
 /*to copy deleted table to VarTable, useful in Lab3*/
 void deal_env_lab3(){
 	sym_t *cur = curEnv;

@@ -101,9 +101,9 @@ node_t *root;
 /*Lab3*/
 /*definition of operand number*/
 struct Operand{
-	enum{VARIABLE, CONSTANT, ADDRESS} kind;
+	enum{VARIABLE, CONSTANT, ADDRESS, TEMP} kind;
 	union{
-		int val_no;
+		int no;
 		int value;
 	}u;
 };
@@ -112,10 +112,11 @@ typedef struct Operand Operand;
 struct InterCode{
 	/*DIV redeclaration*/
 	enum{ASSIGN, ADD, SUB, MUL} kind;
-	union{
+	/*union{
 		struct {Operand left, right;} assisn;
 		struct {Operand result, op1, op2;} binop;
-	}u;
+	}u;*/
+	Operand result, op1, op2;
 };
 typedef struct InterCode InterCode;
 /*link-list for intercodes*/
