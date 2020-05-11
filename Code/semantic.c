@@ -877,7 +877,7 @@ void subTree_DFS(node_t* cur, int mode){
 			subTree_DFS(cur->child, 0);
 
 			//lab3 need a variable table
-			deal_env_lab3();
+			//deal_env_lab3();
 
 			//delete symbol table
 			envTop--;

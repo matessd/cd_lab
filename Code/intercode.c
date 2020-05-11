@@ -153,9 +153,9 @@ Operand *translate_Exp(node_t *cur, int place){
 			int label1 = newLabel();int label2 = newLabel();
 			newInterCodes(ASSIGN, place, TEMP, 0, CONSTANT, -1, -1);
 			translate_Cond(cur, label1, label2);
-			newInterCodes(LABEL, label1, TEMP, -1, -1, -1, -1);
+			newInterCodes(LABEL_DEF, label1, TEMP, -1, -1, -1, -1);
 			newInterCodes(ASSIGN, place, TEMP, 1, CONSTANT, -1, -1);
-			newInterCodes(LABEL, label2, TEMP, -1, -1, -1, -1);
+			newInterCodes(LABEL_DEF, label2, TEMP, -1, -1, -1, -1);
 			ret = newOperand(TEMP, place);
 		}else{
 			myassert(0);
@@ -170,6 +170,39 @@ Operand *translate_Exp(node_t *cur, int place){
 void translate_Cond(node_t *cur, int label_true, int label_false){
 	node_t *child = cur->child;
 	node_t *cbro = child->bro;
+	if(child->syntype==myExp){
+		if(cbro->syntype==myRELOP){
+			int t1=newTemp(); int t2=newTemp();
+			Operand *op1 = translate_Exp(child, t1);
+			Operand *op2 = translate_Exp(cbro->bro, t2);
+			int kind=-1;
+			if(strcmp(cbro->cVal,"<")==0){
+				kind = JL;
+			}else if(strcmp(cbro->cVal,">")==0){
+				kind = JG;
+			}else if(strcmp(cbro->cVal,"<=")==0){
+				kind = JLE;
+			}else if(strcmp(cbro->cVal,">=")==0){
+				kind = JGE;
+			}else if(strcmp(cbro->cVal,"==")==0){
+				kind = JE;
+			}else if(strcmp(cbro->cVal,"!=")==0){
+				kind = JNE;
+			}else{
+				myassert(0);
+			}
+			newInterCodes(kind, label_true, LABEL, op1->u.value, op1->kind, op2->u.value, op2->kind);
+			newInterCodes(JMP, label_false, LABEL,-1,-1,-1,-1);
+			free(op1); free(op2);
+			return;
+		}else if(){
+			return;
+		}
+		//if not above case, goto other case
+	}else if(child->syntype==myNOT){
+		return;
+	}
+	/*other case, like Exp PLUS Exp*/
 
 }
 

@@ -47,7 +47,7 @@ digit [0-9]
 "]" { pf(RB); INIT_node_t(myRB, MODE1); return RB; }
 "(" { pf(LP); INIT_node_t(myLP, MODE1); return LP; }
 ")" { pf(RP); INIT_node_t(myRP, MODE1); return RP; }
-">"|"<"|">="|"<="|"=="|"!=" { pf(RELOP); INIT_node_t(myRELOP, MODE1); return RELOP; }
+">"|"<"|">="|"<="|"=="|"!=" { pf(RELOP); INIT_node_t(myRELOP, 16); return RELOP; }
 "+" { pf(PLUS); INIT_node_t(myPLUS, MODE1); return PLUS; }
 "-" { pf(MINUS); INIT_node_t(myMINUS, MODE1); return MINUS; }
 "*" { pf(STAR); INIT_node_t(mySTAR, MODE1); return STAR; }

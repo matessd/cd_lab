@@ -985,7 +985,7 @@ YY_RULE_SETUP
 case 23:
 YY_RULE_SETUP
 #line 50 "lexical.l"
-{ pf(RELOP); INIT_node_t(myRELOP, MODE1); return RELOP; }
+{ pf(RELOP); INIT_node_t(myRELOP, 16); return RELOP; }
 	YY_BREAK
 case 24:
 YY_RULE_SETUP
