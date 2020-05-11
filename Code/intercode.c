@@ -195,15 +195,107 @@ void translate_Cond(node_t *cur, int label_true, int label_false){
 			newInterCodes(JMP, label_false, LABEL,-1,-1,-1,-1);
 			free(op1); free(op2);
 			return;
-		}else if(){
+		}
+		else if(cbro->syntype==myAND){
+			int label1 = newLabel();
+			translate_Cond(child, label1, label_false);
+			newInterCodes(LABEL_DEF, label1, LABEL, -1,-1,-1,-1);
+			translate_Cond(cbro->bro, label_true, label_false);
+			return;
+		}
+		else if(cbro->syntype==myOR){
+			int label1 = newLabel();
+			translate_Cond(child, label_true, label1);
+			newInterCodes(LABEL_DEF, label1, LABEL, -1,-1,-1,-1);
+			translate_Cond(cbro->bro, label_true, label_false);
 			return;
 		}
 		//if not above case, goto other case
 	}else if(child->syntype==myNOT){
+		translate_Cond(cbro, label_false, label_true);
 		return;
 	}
 	/*other case, like Exp PLUS Exp*/
+	int t1 = newTemp();
+	Operand *op1 = translate_Exp(cur, t1);
+	newInterCodes(JNE, label_true, LABEL, op1->u.value, op1->kind, 0, CONSTANT);
+	newInterCodes(JMP, label_false, LABEL, -1,-1,-1,-1);
+	free(op1);
+}
 
+void translate_CompSt(node_t *cur);
+void translate_Stmt(node_t *cur){
+	node_t *child = cur->child;
+	node_t *gchild = child->child;
+	if(child->syntype==myExp){
+		if(gchild->syntype!=myExp && gchild->syntype!=myID)
+			return;
+		else if(gchild->bro->syntype!=myASSIGNOP && gchild->bro->syntype!=myLP)
+			return;
+		translate_Exp(child, -1);
+	}
+	else if(child->syntype==myCompSt){
+		translate_CompSt(child);
+	}
+	else if(child->syntype==myRETURN){
+		int t1 = newTemp();
+		Operand *op1 = translate_Exp(child->bro, t1);
+		newInterCodes(RET, t1, TEMP, -1,-1,-1,-1);
+		free(op1);
+	}
+	else if(child->syntype==myIF){
+		if(child->bro->bro->bro->bro->bro==NULL){
+			//case IF LP Exp RP Stmt
+			int label1 = newLabel();
+			int label2 = newLabel();
+			translate_Cond(child->bro->bro, label1, label2);
+			newInterCodes(LABEL_DEF, label1, LABEL,-1,-1,-1,-1);
+			translate_Stmt(child->bro->bro->bro->bro);
+			newInterCodes(LABEL_DEF, label2, LABEL,-1,-1,-1,-1);
+		}
+		else{
+			int label1 = newLabel();
+			int label2 = newLabel();
+			int label3 = newLabel();
+			translate_Cond(child->bro->bro, label1, label2);
+			newInterCodes(LABEL_DEF, label1, LABEL,-1,-1,-1,-1);
+			translate_Stmt(child->bro->bro->bro->bro);
+			newInterCodes(JMP, label3, LABEL,-1,-1,-1,-1);
+			newInterCodes(LABEL_DEF, label2, LABEL,-1,-1,-1,-1);
+			translate_Stmt(child->bro->bro->bro->bro->bro->bro);
+			newInterCodes(LABEL_DEF, label3, LABEL,-1,-1,-1,-1);
+		}
+	}
+	else {
+		//case WHILE LP Exp RP Stmt
+		int label1 = newLabel();
+		int label2 = newLabel();
+		int label3 = newLabel();
+		newInterCodes(LABEL_DEF, label1, LABEL,-1,-1,-1,-1);
+		translate_Cond(child->bro->bro, label2, label3);
+		newInterCodes(LABEL_DEF, label2, LABEL,-1,-1,-1,-1);
+		translate_Stmt(child->bro->bro->bro->bro);
+		newInterCodes(JMP, label1, LABEL,-1,-1,-1,-1);
+		newInterCodes(LABEL_DEF, label3, LABEL,-1,-1,-1,-1);
+	}
+}
+
+void translate_CompSt(node_t *cur){
+	
+}
+
+void translate_FunDec(node_t *cur){
+	node_t *child = cur->child;//ID
+	/*insert FUNCTION name:*/
+	InterCodes *codes = malloc(sizeof(InterCodes));
+	codes->prev = codes->next = NULL;
+	codes->code.kind = FUN;
+	codes->code.result.kind = NAME;
+	strcpy(codes->code.result.u.cVal, child->cVal);
+	addCodesTail(codes);
+	/*define param*/
+	if(child->bro->bro->syntype==myVarList);
+		//translate_VarList(child->bro->bro);
 }
 
 /*traverse InterCodes list and print*/

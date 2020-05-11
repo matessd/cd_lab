@@ -102,10 +102,11 @@ node_t *root;
 /*definition of operand number*/
 struct Operand{
 	enum{VARIABLE, CONSTANT, ADDRESS, TEMP,
-		 LABEL} kind;
+		 LABEL, NAME} kind;
 	union{
 		int no;
 		int value;
+		char cVal[33];//for function name
 	}u;
 };
 typedef struct Operand Operand;
@@ -113,7 +114,8 @@ typedef struct Operand Operand;
 struct InterCode{
 	/*DIV redeclaration*/
 	enum{ASSIGN, ADD, SUB, MUL, DIV_L3, LABEL_DEF,
-		 JMP, JL, JG, JLE, JGE, JE, JNE} kind;
+		 JMP, JL, JG, JLE, JGE, JE, JNE,
+		 RET, FUN} kind;
 	/*union{
 		struct {Operand left, right;} assisn;
 		struct {Operand result, op1, op2;} binop;
