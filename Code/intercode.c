@@ -280,10 +280,34 @@ void translate_Stmt(node_t *cur){
 	}
 }
 
+void translate_StmtList(node_t *cur);
+void translate_DefList(node_t *cur);
 void translate_CompSt(node_t *cur){
-	
+	node_t *child = cur->child;//LC
+	node_t *cbro = child->bro;
+	if(cbro->syntype==myDefList){
+		translate_DefList(cbro);
+		if(cbro->bro->syntype==myStmtList)
+			translate_StmtList(cbro->bro);
+	}
+	else if(cbro->syntype==myStmtList){
+		translate_StmtList(cbro);
+	}
 }
 
+void translate_DefList(node_t *cur){
+	//TODO
+}
+
+void translate_StmtList(node_t *cur){
+	node_t *child = cur->child;
+	translate_Stmt(child);
+	if(child->bro!=NULL){
+		translate_StmtList(child->bro);
+	}
+}
+
+void translate_VarList(node_t *cur);
 void translate_FunDec(node_t *cur){
 	node_t *child = cur->child;//ID
 	/*insert FUNCTION name:*/
@@ -294,8 +318,12 @@ void translate_FunDec(node_t *cur){
 	strcpy(codes->code.result.u.cVal, child->cVal);
 	addCodesTail(codes);
 	/*define param*/
-	if(child->bro->bro->syntype==myVarList);
-		//translate_VarList(child->bro->bro);
+	if(child->bro->bro->syntype==myVarList)
+		translate_VarList(child->bro->bro);
+}
+
+void translate_VarList(node_t *cur){
+	
 }
 
 /*traverse InterCodes list and print*/
