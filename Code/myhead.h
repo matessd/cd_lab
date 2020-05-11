@@ -111,7 +111,7 @@ typedef struct Operand Operand;
 /*a line of intercode*/
 struct InterCode{
 	/*DIV redeclaration*/
-	enum{ASSIGN, ADD, SUB, MUL, DIV_L3} kind;
+	enum{ASSIGN, ADD, SUB, MUL, DIV_L3, LABEL} kind;
 	/*union{
 		struct {Operand left, right;} assisn;
 		struct {Operand result, op1, op2;} binop;
