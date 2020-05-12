@@ -352,7 +352,7 @@ void translate_Stmt(node_t *cur){
 	else if(child->syntype==myRETURN){
 		int t1 = newTemp();
 		Operand *op1 = translate_Exp(child->bro, t1);
-		newInterCodes(RET, t1, TEMP, -1,-1,-1,-1);
+		newInterCodes(RET, op1->u.value, op1->kind, -1,-1,-1,-1);
 		free(op1);
 	}
 	else if(child->syntype==myIF){
