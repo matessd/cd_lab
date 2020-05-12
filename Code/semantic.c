@@ -10,10 +10,38 @@ void subTree_Exp_DFS(node_t *cur);
 node_t *Def_DFS(node_t *cur, int mode);
 node_t *StructSpecifier_DFS(node_t *cur);
 
-sym_t Sym_tmp, Sym_tmp1;//for passing value
+void deal_env_lab3();
+
+void insert_fun_symbol(int lineno, sym_t *pSym, sym_t **fenv);
 void DFS(){
 	curEnv = envStack[0] = NULL;
+
+	/*needed in Lab3*/
+	sym_t *p1 = malloc(sizeof(sym_t));
+	strcpy(p1->cVal, "read");
+	p1->detail = p1->member = NULL;
+	p1->id_type = VAR_TYPE;
+	p1->val_type = INT_TYPE;
+	insert_fun_symbol(-1, p1, &funEnv);
+
+	sym_t *p2 = malloc(sizeof(sym_t));
+	strcpy(p2->cVal, "write");
+	p2->detail = p2->member = NULL;
+	p2->id_type = VAR_TYPE;
+	p2->val_type = INT_TYPE;
+
+	sym_t *arg = malloc(sizeof(sym_t));
+	arg->detail = arg->member = NULL;
+	arg->id_type = VAR_TYPE;
+	arg->val_type = INT_TYPE;
+
+	p2->member = arg;
+	insert_fun_symbol(-1, p2, &funEnv);
+
 	subTree_DFS(root, 0);
+
+	/*in Lab3*/
+	deal_env_lab3();
 }
 
 sym_t *SearchSymList(const char *cVal, sym_t *env, int id_type){
@@ -169,14 +197,6 @@ void insert_symbol(int mode, int lineno, sym_t *pSym){
 		  return;
 		}
 	    break;
-	  /*case FUN_TYPE:
-	    p1 = search_table(pSym->cVal, ALL_MODE, FUN_TYPE);
-        if(p1!=NULL){
-		  pt_semantic_error(4, lineno, pSym->cVal);
-		  return;
-		}
-	    break;
-	  */	
 	  case STR_TYPE:
 	    p1 = search_table(pSym->cVal, ALL_MODE, VAR_TYPE);
 		p2 = search_table(pSym->cVal, ALL_MODE, STR_TYPE); 
@@ -264,9 +284,7 @@ int Type_cmp(node_t *p1, node_t *p2){
 }
 
 int Args_cmp(node_t *p1, node_t *p2){
-	//printf("1\n");
 	if(p1==NULL || p2==NULL) return 1;
-	//printf("2\n");
 	//myassert(p1->val_type==STR_VAR && p2->val_type==STR_VAR);
 	if(p1==p2) return 0;//same structure name
 	while(p1->member!=NULL && p2->member!=NULL){
@@ -275,7 +293,6 @@ int Args_cmp(node_t *p1, node_t *p2){
 		p1 = p1->member;
 		p2 = p2->member;
 	}
-	//printf("3\n");
 	if(p1->member==NULL&&p2->member==NULL){
 		return 0;
 	}else{
@@ -283,7 +300,6 @@ int Args_cmp(node_t *p1, node_t *p2){
 	}
 	if(Type_cmp(p1,p2)!=0)
 			return 1;
-	//printf("4\n");
 	return 0;
  }
 
@@ -548,7 +564,6 @@ node_t *StructSpecifier_DFS(node_t *cur){
 }
 
 node_t *ParamDec_DFS(node_t *cur){
-	//printf("1\n");
 	node_t *child = cur->child;//Specifier
 	node_t *gchild = child->child;//TYPE or StructSpecifier
 	child->bro->arr_dim = -1;
@@ -564,7 +579,6 @@ node_t *ParamDec_DFS(node_t *cur){
 		insert_symbol(LOCAL_MODE, child->bro->lineno, child->bro);
 	}else{
 		//StructSpecifier
-		//printf("2\n");
 		type = StructSpecifier_DFS(gchild);
 		//printf("3\n");
 		if(type==NULL)
@@ -573,7 +587,6 @@ node_t *ParamDec_DFS(node_t *cur){
 		child->bro->val_type = STR_VAR;
 		child->bro->detail = type;
 		insert_symbol(OVER_MODE, child->bro->lineno, child->bro);
-		//printf("4\n");
 		//TODO
 	}
 	//printf("2\n");
@@ -853,7 +866,6 @@ void subTree_Exp_DFS(node_t *cur){
 }
 
 extern VarNode *g_VarTable;
-void deal_env_lab3();
 
 void subTree_DFS(node_t* cur, int mode){
 	//printf("%s:1\n",mytname[cur->syntype]);
@@ -877,7 +889,7 @@ void subTree_DFS(node_t* cur, int mode){
 			subTree_DFS(cur->child, 0);
 
 			//lab3 need a variable table
-			//deal_env_lab3();
+			deal_env_lab3();
 
 			//delete symbol table
 			envTop--;
@@ -916,6 +928,7 @@ extern int VarTable_insert(const char *cVal);//in file intercode.c
 /*to copy deleted table to VarTable, useful in Lab3*/
 void deal_env_lab3(){
 	sym_t *cur = curEnv;
+	if(cur==NULL) return;
 	while(cur->nxt!=NULL){
 		sym_t *nxt = cur->nxt;
 		VarTable_insert(cur->cVal);
