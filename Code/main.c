@@ -6,7 +6,7 @@ extern int yylineno;
 extern int error_flg;
 //extern void pTree();
 extern void DFS();
-extern void InterCodes_DFS(char *filename);
+extern void translate_root(char *filename);
 //extern int yydebug;
 int main(int argc, char** argv) {
 	if(argc <= 1) return 1;
@@ -24,7 +24,7 @@ int main(int argc, char** argv) {
 	//printf("%s\n",argv[2]);
 	DFS();
 	//printf("%s\n",argv[2]);
-	InterCodes_DFS(argv[2]);
+	translate_root(argv[2]);
 	return 0;
 }
 

@@ -932,11 +932,11 @@ void deal_env_lab3(){
 	while(cur->nxt!=NULL){
 		sym_t *nxt = cur->nxt;
 		VarTable_insert(cur->cVal);
-		free(cur);
+		//free(cur);
 		cur = nxt;
 	}
 	VarTable_insert(cur->cVal);
-	free(cur);
+	//free(cur);
 }
 
 

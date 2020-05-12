@@ -90,7 +90,7 @@ node_t *root;
 #define pf3(x) 
 #endif
 
-//#define MY_ASSERT_DEBUG
+#define MY_ASSERT_DEBUG
 #ifdef MY_ASSERT_DEBUG 
 #define myassert assert
 #else
