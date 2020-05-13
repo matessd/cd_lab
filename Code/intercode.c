@@ -149,11 +149,13 @@ Operand *translate_Exp(node_t *cur, int place){
 			if(strcmp(child->cVal, "read")==0)
 			{
 				newInterCodes(READ, place, TEMP, -1, -1, -1,-1);
+				ret = newOperand(TEMP, place);
 			}
 			else
 			{
 				InterCodes *codes = newInterCodes(CALL, place, TEMP, -1, NAME, -1,-1);
 				strcpy(codes->code.op1.u.cVal, child->cVal);
+				ret = newOperand(TEMP, place);
 			}
 		}
 		else
@@ -164,6 +166,7 @@ Operand *translate_Exp(node_t *cur, int place){
 				Operand *result = translate_Exp(cbro->bro->child, place);
 				newInterCodes(WRITE, result->u.value, result->kind, -1,-1,-1,-1);
 				free(result);
+				ret = newOperand(CONSTANT, 0);
 			}
 			else
 			{
@@ -177,6 +180,7 @@ Operand *translate_Exp(node_t *cur, int place){
 				}
 				InterCodes *codes = newInterCodes(CALL, place, TEMP, -1, NAME, -1,-1);
 				strcpy(codes->code.op1.u.cVal, child->cVal);
+				ret = newOperand(TEMP, place);
 			}
 		}
 	}
