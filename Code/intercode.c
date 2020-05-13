@@ -6,14 +6,16 @@ int g_tempno=0;//remember number for temp variable
 int g_labelno=0;
 /*stored operand in string type, when we print*/
 char g_cresult[35], g_cop1[35], g_cop2[35];
+/*set nullop as default Operand*/
+Operand *nullop;
 
-InterCodes *newInterCodes(int codekind, int result, int resultkind, int opvalue1, int kind1, int opvalue2, int kind2);
+InterCodes *newInterCodes(int codekind, Operand *result, Operand *op1, Operand *op2);
 
 /*gen ASSIGN code, 
 **for Exp ASSIGN Exp, and VarDec ASSIGN Exp
 */
 Operand *assign_Var(Operand *left, Operand *right){
-	newInterCodes(ASSIGN, left->u.value, left->kind, right->u.value, right->kind, -1,-1);
+	newInterCodes(ASSIGN, left, right, nullop);
 	//TODO for array and stru
 	return left;
 }
@@ -66,25 +68,24 @@ void addCodesTail(InterCodes *codes){
 
 /*new a InterCodes and return pointer
   and add it to the global InterCodes list*/
-InterCodes *newInterCodes(int codekind, int result, int resultkind, int opvalue1, int kind1, int opvalue2, int kind2){
+InterCodes *newInterCodes(int codekind, Operand *result, Operand *op1, Operand *op2){
 	InterCodes *cur = malloc(sizeof(InterCodes));
 	cur->code.kind = codekind;
 	cur->prev = cur->next = NULL;
-	cur->code.result.kind = resultkind;
-	cur->code.result.u.value = result;
-	cur->code.op1.kind = kind1;
-	cur->code.op1.u.value = opvalue1;
-	cur->code.op2.kind = kind2;
-	cur->code.op2.u.value = opvalue2;
+	cur->code.result = *result;
+	cur->code.op1 = *op1;
+	cur->code.op2 = *op2;
 	addCodesTail(cur);
 	return cur;
 }
 
 /*new and initial Operand structure*/
-Operand *newOperand(int kind, int value){
+Operand *newOperand(int kind, int value, node_t *type, ArrNodes *arrs){
 	Operand *node = malloc(sizeof(Operand));
 	node->kind = kind;
 	node->u.value = value;
+	node->type = type;
+	node->arrs = arrs;
 	return node;
 }
 
@@ -118,8 +119,9 @@ Operands *translate_Args(node_t *cur);
 
 /*
 Description: translate mode of Exp Node
-Args: cur is the current node, 
-place is the label of temp variable
+Args: 
+**cur: the current node, 
+**place:  the label of temp variable
 */
 Operand *translate_Exp(node_t *cur, int place){
 	pf3(Exp);
@@ -130,7 +132,7 @@ Operand *translate_Exp(node_t *cur, int place){
 	if(child->syntype==myINT)
 	{
 		pf3(ExpINT);
-		ret = newOperand(CONSTANT, child->iVal);
+		ret = newOperand(CONSTANT, child->iVal, NULL, NULL);
 	}
 	else if(child->syntype == myID)
 	{
@@ -140,7 +142,7 @@ Operand *translate_Exp(node_t *cur, int place){
 			pf3(ExpID1);
 			var_no = VarTable_search(child->cVal);
 			myassert(var_no>0);
-			ret = newOperand(VARIABLE, var_no);
+			ret = newOperand(VARIABLE, var_no, NULL, NULL);
 			//printf("%s--%d\n",child->cVal,var_no);
 		}
 		else if(cbro->bro->syntype==myRP)
@@ -148,14 +150,16 @@ Operand *translate_Exp(node_t *cur, int place){
 			pf3(ExpID2);
 			if(strcmp(child->cVal, "read")==0)
 			{
-				newInterCodes(READ, place, TEMP, -1, -1, -1,-1);
-				ret = newOperand(TEMP, place);
+				ret = newOperand(TEMP, place, NULL, NULL);
+				newInterCodes(READ, ret, nullop, nullop);
 			}
 			else
 			{
-				InterCodes *codes = newInterCodes(CALL, place, TEMP, -1, NAME, -1,-1);
+				Operand *op1 = newOperand(NAME, KIND, NULL, NULL);
+				ret = newOperand(TEMP, place, NULL, NULL);
+				InterCodes *codes = newInterCodes(CALL, ret, op1, nullop);
 				strcpy(codes->code.op1.u.cVal, child->cVal);
-				ret = newOperand(TEMP, place);
+				free(op1);
 			}
 		}
 		else
@@ -164,23 +168,26 @@ Operand *translate_Exp(node_t *cur, int place){
 			if(strcmp(child->cVal, "write")==0)
 			{
 				Operand *result = translate_Exp(cbro->bro->child, place);
-				newInterCodes(WRITE, result->u.value, result->kind, -1,-1,-1,-1);
+				newInterCodes(WRITE, result, nullop, nullop);
 				free(result);
-				ret = newOperand(CONSTANT, 0);
+				ret = newOperand(CONSTANT, 0 ,NULL, NULL);
 			}
 			else
 			{
 				Operands *ops = translate_Args(cbro->bro);
 				while(ops!=NULL)
 				{
-					newInterCodes(ARG, ops->op.u.value, ops->op.kind, -1,-1,-1,-1);
+					newInterCodes(ARG, &(ops->op), nullop, nullop);
 					Operands *p = ops;
 					ops = ops->next;
 					free(p);
 				}
-				InterCodes *codes = newInterCodes(CALL, place, TEMP, -1, NAME, -1,-1);
+				Operand *op1 = newOperand(NAME, KIND, NULL, NULL);
+				strcpy(op1->u.cVal, child->cVal);
+				ret = newOperand(TEMP, place, NULL, NULL);
+				InterCodes *codes = newInterCodes(CALL, ret, op1, nullop);
 				strcpy(codes->code.op1.u.cVal, child->cVal);
-				ret = newOperand(TEMP, place);
+				free(op1);
 			}
 		}
 	}
@@ -193,10 +200,11 @@ Operand *translate_Exp(node_t *cur, int place){
 	{
 		pf3(ExpMINUS);
 		int t1 = newTemp();
+		Operand *op1 = newOperand(CONSTANT, 0, NULL, NULL);
 		Operand *op2 = translate_Exp(cbro, t1);
-		newInterCodes(SUB, place, TEMP, 0, CONSTANT, op2->u.value, op2->kind);
-		free(op2);
-		ret = newOperand(TEMP, place);
+		ret = newOperand(TEMP, place, NULL, NULL);
+		newInterCodes(SUB, ret, op1, op2);
+		free(op2); free(op1);
 	}
 	else if(child->syntype == myExp || child->syntype==myNOT)
 	{
@@ -207,23 +215,23 @@ Operand *translate_Exp(node_t *cur, int place){
 			int t1=newTemp(); int t2=newTemp();
 			Operand *op1 = translate_Exp(child, t1);
 			Operand *op2 = translate_Exp(cbro->bro, t2);
+			ret = newOperand(TEMP, place, NULL, NULL);
 			switch(cbro->syntype)
 			{
 				case(myPLUS):
-					newInterCodes(ADD, place, TEMP, op1->u.value, op1->kind, op2->u.value, op2->kind);
+					newInterCodes(ADD, ret, op1, op2);
 					break;
 				case(myMINUS):
-					newInterCodes(SUB, place, TEMP, op1->u.value, op1->kind, op2->u.value, op2->kind);
+					newInterCodes(SUB, ret, op1, op2);
 					break;
 				case(mySTAR):
-					newInterCodes(MUL, place, TEMP, op1->u.value, op1->kind, op2->u.value, op2->kind);
+					newInterCodes(MUL, ret, op1, op2);
 					break;
 				case(myDIV):
-					newInterCodes(DIV_L3, place, TEMP, op1->u.value, op1->kind, op2->u.value, op2->kind);
+					newInterCodes(DIV_L3, ret, op1, op2);
 					break;
 			}
 			free(op1); free(op2);
-			ret = newOperand(TEMP, place);
 		}
 		else if(cbro->syntype==myASSIGNOP)
 		{
@@ -245,22 +253,29 @@ Operand *translate_Exp(node_t *cur, int place){
 				||child->syntype==myNOT)
 		{
 			int label1 = newLabel();int label2 = newLabel();
-			newInterCodes(ASSIGN, place, TEMP, 0, CONSTANT, -1, -1);
+			ret = newOperand(TEMP, place, NULL, NULL);
+			Operand *op;
+			op = newOperand(CONSTANT, 0, NULL, NULL);
+			newInterCodes(ASSIGN, ret, op, nullop);
+			free(op);
 			translate_Cond(cur, label1, label2);
-			newInterCodes(LABEL_DEF, label1, LABEL, -1, -1, -1, -1);
-			newInterCodes(ASSIGN, place, TEMP, 1, CONSTANT, -1, -1);
-			newInterCodes(LABEL_DEF, label2, LABEL, -1, -1, -1, -1);
-			ret = newOperand(TEMP, place);
+			op = newOperand(LABEL, label1, NULL, NULL);
+			newInterCodes(LABEL_DEF, op, nullop, nullop);
+			free(op);
+			op = newOperand(CONSTANT, 1, NULL, NULL);
+			newInterCodes(ASSIGN, ret, op, nullop);
+			free(op);
+			op = newOperand(LABEL, label2, NULL, NULL);
+			newInterCodes(LABEL_DEF, op, nullop, nullop);
+			free(op);
 		}
 		else{
 			myassert(0);
 		}
 	}
 	else{
-		//pf3(error);
 		myassert(0);
 	}
-	//pf3(end);
 	return ret;
 }
 
@@ -309,22 +324,28 @@ void translate_Cond(node_t *cur, int label_true, int label_false){
 			}else{
 				myassert(0);
 			}
-			newInterCodes(kind, label_true, LABEL, op1->u.value, op1->kind, op2->u.value, op2->kind);
-			newInterCodes(JMP, label_false, LABEL,-1,-1,-1,-1);
-			free(op1); free(op2);
+			Operand *labelop = newOperand(LABEL, label_true, NULL, NULL);
+			newInterCodes(kind, labelop, op1, op2);
+			labelop->u.value = label_false;
+			newInterCodes(JMP, labelop, nullop, nullop);
+			free(op1); free(op2); free(labelop);
 			return;
 		}
 		else if(cbro->syntype==myAND){
 			int label1 = newLabel();
 			translate_Cond(child, label1, label_false);
-			newInterCodes(LABEL_DEF, label1, LABEL, -1,-1,-1,-1);
+			Operand *labelop = newOperand(LABEL, label1, NULL, NULL);
+			newInterCodes(LABEL_DEF, labelop, nullop,nullop);
+			free(labelop);
 			translate_Cond(cbro->bro, label_true, label_false);
 			return;
 		}
 		else if(cbro->syntype==myOR){
 			int label1 = newLabel();
 			translate_Cond(child, label_true, label1);
-			newInterCodes(LABEL_DEF, label1, LABEL, -1,-1,-1,-1);
+			Operand *labelop = newOperand(LABEL, label1, NULL, NULL);
+			newInterCodes(LABEL_DEF, labelop, nullop,nullop);
+			free(labelop);
 			translate_Cond(cbro->bro, label_true, label_false);
 			return;
 		}
@@ -336,9 +357,12 @@ void translate_Cond(node_t *cur, int label_true, int label_false){
 	/*other case, like Exp PLUS Exp*/
 	int t1 = newTemp();
 	Operand *op1 = translate_Exp(cur, t1);
-	newInterCodes(JNE, label_true, LABEL, op1->u.value, op1->kind, 0, CONSTANT);
-	newInterCodes(JMP, label_false, LABEL, -1,-1,-1,-1);
-	free(op1);
+	Operand *labelop = newOperand(LABEL, label_true, NULL, NULL);
+	Operand *zeroop = newOperand(CONSTANT, 0, NULL, NULL);
+	newInterCodes(JNE, labelop, op1, zeroop);
+	labelop->u.value = label_false;
+	newInterCodes(JMP, labelop, nullop, nullop);
+	free(op1); free(labelop); free(zeroop);
 }
 
 void translate_CompSt(node_t *cur);
@@ -359,7 +383,7 @@ void translate_Stmt(node_t *cur){
 	else if(child->syntype==myRETURN){
 		int t1 = newTemp();
 		Operand *op1 = translate_Exp(child->bro, t1);
-		newInterCodes(RET, op1->u.value, op1->kind, -1,-1,-1,-1);
+		newInterCodes(RET, op1, nullop, nullop);
 		free(op1);
 	}
 	else if(child->syntype==myIF){
@@ -367,22 +391,33 @@ void translate_Stmt(node_t *cur){
 			//case IF LP Exp RP Stmt
 			int label1 = newLabel();
 			int label2 = newLabel();
+			Operand *labelop = newOperand(LABEL, label1, NULL, NULL);
 			translate_Cond(child->bro->bro, label1, label2);
-			newInterCodes(LABEL_DEF, label1, LABEL,-1,-1,-1,-1);
+			newInterCodes(LABEL_DEF, labelop,nullop, nullop);
 			translate_Stmt(child->bro->bro->bro->bro);
-			newInterCodes(LABEL_DEF, label2, LABEL,-1,-1,-1,-1);
+			labelop->u.value = label2;
+			newInterCodes(LABEL_DEF, labelop,nullop, nullop);
+			free(labelop);
 		}
 		else{
 			int label1 = newLabel();
 			int label2 = newLabel();
 			int label3 = newLabel();
+			Operand *labelop = newOperand(LABEL, label1, NULL, NULL);
 			translate_Cond(child->bro->bro, label1, label2);
-			newInterCodes(LABEL_DEF, label1, LABEL,-1,-1,-1,-1);
+			newInterCodes(LABEL_DEF, labelop, nullop,nullop);
 			translate_Stmt(child->bro->bro->bro->bro);
-			newInterCodes(JMP, label3, LABEL,-1,-1,-1,-1);
-			newInterCodes(LABEL_DEF, label2, LABEL,-1,-1,-1,-1);
+
+			labelop->u.value = label3;
+			newInterCodes(JMP, labelop, nullop, nullop);
+
+			labelop->u.value = label2;
+			newInterCodes(LABEL_DEF, labelop, nullop,nullop);
 			translate_Stmt(child->bro->bro->bro->bro->bro->bro);
-			newInterCodes(LABEL_DEF, label3, LABEL,-1,-1,-1,-1);
+
+			labelop->u.value = label3;
+			newInterCodes(LABEL_DEF, labelop, nullop,nullop);
+			free(labelop);
 		}
 	}
 	else {
@@ -390,12 +425,20 @@ void translate_Stmt(node_t *cur){
 		int label1 = newLabel();
 		int label2 = newLabel();
 		int label3 = newLabel();
-		newInterCodes(LABEL_DEF, label1, LABEL,-1,-1,-1,-1);
+		Operand *labelop = newOperand(LABEL, label1, NULL, NULL);
+		newInterCodes(LABEL_DEF, labelop, nullop, nullop);
 		translate_Cond(child->bro->bro, label2, label3);
-		newInterCodes(LABEL_DEF, label2, LABEL,-1,-1,-1,-1);
+
+		labelop->u.value = label2;
+		newInterCodes(LABEL_DEF, labelop, nullop, nullop);
 		translate_Stmt(child->bro->bro->bro->bro);
-		newInterCodes(JMP, label1, LABEL,-1,-1,-1,-1);
-		newInterCodes(LABEL_DEF, label3, LABEL,-1,-1,-1,-1);
+
+		labelop->u.value = label1;
+		newInterCodes(JMP, labelop, nullop, nullop);
+
+		labelop->u.value = label3;
+		newInterCodes(LABEL_DEF, labelop, nullop, nullop);
+		free(labelop);
 	}
 }
 
@@ -466,7 +509,9 @@ void translate_FunDec(node_t *cur){
 	pf3(FunDec);
 	node_t *child = cur->child;//ID
 	/*insert FUNCTION name:*/
-	InterCodes *codes = newInterCodes(FUN, -1, NAME, -1,-1,-1,-1);
+	Operand *op = newOperand(NAME, KIND, NULL, NULL);
+	InterCodes *codes = newInterCodes(FUN, op,nullop,nullop);
+	free(op);
 	strcpy(codes->code.result.u.cVal, child->cVal);
 	/*define param*/
 	if(child->bro->bro->syntype==myVarList)
@@ -487,7 +532,7 @@ void translate_VarList(node_t *cur){
 void translate_ParamDec(node_t *cur){
 	node_t *cbro = cur->child->bro;
 	Operand *op = translate_VarDec(cbro);
-	newInterCodes(PARAM, op->u.value, op->kind,-1,-1,-1,-1);
+	newInterCodes(PARAM, op, nullop, nullop);
 	free(op);
 }
 
@@ -498,7 +543,7 @@ Operand *translate_VarDec(node_t *cur){
 	/*the cVal of VarDec is the same as ID
 	**Because we copy when call VarDec_DFS in semantic.c*/
 	int var_no = VarTable_search(cur->cVal);
-	Operand *op =newOperand(VARIABLE, var_no);
+	Operand *op =newOperand(VARIABLE, var_no, NULL, NULL);
 	return op;
 }
 
@@ -506,9 +551,11 @@ extern node_t *root;
 void translate_ExtDefList(node_t *cur);
 void InterCodes_DFS(char *filename);
 void translate_root(char *filename){
+	nullop = newOperand(KIND, KIND, NULL, NULL);
 	if(root->child!=NULL)
 		translate_ExtDefList(root->child);
 	InterCodes_DFS(filename);
+	free(nullop);
 }
 
 void translate_ExtDef(node_t *cur);
@@ -622,9 +669,6 @@ void pt_Operand(Operand *op, char *dst){
 	  case CONSTANT:
 		sprintf(dst, "#%d", op->u.value);
 		break;
-	  case ADDRESS:
-		//TODO
-		break;
 	  case TEMP:
 		sprintf(dst, "t%d", op->u.value);
 		break;
@@ -634,7 +678,7 @@ void pt_Operand(Operand *op, char *dst){
 	  case NAME:
 		sprintf(dst, "%s", op->u.cVal);
 		break;
-	  case -1: 
+	  case KIND: 
 		break;
 	  default: myassert(0);
 		break;

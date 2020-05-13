@@ -10,6 +10,20 @@ void subTree_Exp_DFS(node_t *cur);
 node_t *Def_DFS(node_t *cur, int mode);
 node_t *StructSpecifier_DFS(node_t *cur);
 
+ArrNodes* newArrNodes(int size){
+	ArrNodes *ret = malloc(sizeof(ArrNodes));
+	ret->arr.size = size;
+	ret->next = NULL;
+}
+
+ArrNodes *connectArrNodes(ArrNodes *p1, ArrNodes *p2){
+	ArrNodes *ptmp = p1;
+	while(ptmp->next!=NULL)
+		ptmp=ptmp->next;
+	ptmp->next = p2;
+	return p1;
+}
+
 void deal_env_lab3();
 
 void insert_fun_symbol(int lineno, sym_t *pSym, sym_t **fenv);
@@ -374,7 +388,15 @@ void *VarDec_DFS(node_t *dst, sym_t *cur){
 	if(child->syntype==myID){
 		strcpy(dst->cVal, child->cVal);
 	}else{
+		//VarDec LB INT RB
 		VarDec_DFS(dst, child);
+		/*L3*/
+		ArrNodes *arrs = newArrNodes(child->bro->bro->iVal);
+		if(dst->arrs==NULL){
+			dst->arrs = arrs;
+		}else{
+			connectArrNodes(dst->arrs, arrs);
+		}
 	}
 	dst->arr_dim++;
 }
@@ -383,9 +405,7 @@ enum{STR_MODE, VAR_MODE};
 node_t *Dec_DFS(node_t *cur, sym_t *type, int val_type, int mode){
 	node_t *child = cur->child;//VarDec
 	child->arr_dim = -1;
-	//printf("%s*\n",child->cVal);
-	VarDec_DFS(child, child);
-	//printf("%s*\n",child->cVal);
+	child->arrs = NULL;
 	child->member = child->detail = NULL;
 	if(type==NULL){
 	  child->id_type = VAR_TYPE;
@@ -395,6 +415,7 @@ node_t *Dec_DFS(node_t *cur, sym_t *type, int val_type, int mode){
 	  child->val_type = STR_VAR;
 	  child->detail = type;
 	}
+	VarDec_DFS(child, child);
 	if(mode==VAR_MODE)
 	  insert_symbol(LOCAL_MODE, child->lineno, child);
 	if(child->bro!=NULL){
@@ -567,6 +588,7 @@ node_t *ParamDec_DFS(node_t *cur){
 	node_t *child = cur->child;//Specifier
 	node_t *gchild = child->child;//TYPE or StructSpecifier
 	child->bro->arr_dim = -1;
+	child->bro->arrs = NULL;
 	child->bro->detail = child->bro->member = NULL;
 	node_t *type = NULL;
 	VarDec_DFS(child->bro, child->bro);
@@ -637,6 +659,7 @@ void FunDec_DFS(node_t *cur, node_t* type, int val_type, int fun_flg){
 void ExtDecList_DFS(node_t *cur, node_t *type, int val_type){
 	node_t *child = cur->child;//VarDec
 	child->arr_dim = -1;
+	child->arrs = NULL;
 	child->detail = child->member = NULL;
 	VarDec_DFS(child, child);
 	if(type==NULL){
@@ -932,11 +955,9 @@ void deal_env_lab3(){
 	while(cur->nxt!=NULL){
 		sym_t *nxt = cur->nxt;
 		VarTable_insert(cur->cVal);
-		//free(cur);
 		cur = nxt;
 	}
 	VarTable_insert(cur->cVal);
-	//free(cur);
 }
 
 

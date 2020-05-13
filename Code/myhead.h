@@ -51,6 +51,19 @@ static const char *const mytname[] =
   "Dec", "Exp", "Args"
 };
 
+struct ArrNode{
+	int size;
+};
+typedef struct ArrNode ArrNode;
+struct ArrNodes{
+	ArrNode arr;
+	struct ArrNodes *next;
+};
+typedef struct ArrNodes ArrNodes;
+
+//ArrNodes* newArrNodes(int size);
+//ArrNodes *connectArrNodes(ArrNodes *p1, ArrNodes *p2);
+
 typedef struct node_t node_t;
 #define sym_t node_t
 struct node_t{
@@ -67,24 +80,16 @@ struct node_t{
 	int errflg, vis;
 	enum{VAR_TYPE, /*FUN_TYPE*/ STR_TYPE} id_type;
 	enum{INT_TYPE, FLOAT_TYPE, STR_VAR, STR_DEF} val_type;
-	int arr_dim;//array dimension
+	int arr_dim;//array dimension cnt
+	ArrNodes *arrs;//stored array size
+
 	enum{FUN_DEC, FUN_DEF}fun_flg;//now no use
 	struct node_t *member, *detail;
 };
-/*struct sym_t{
-	struct sym_t *nxt;
-	char cVal[33];
-	enum{VAR_TYPE, FUN_TYPE} id_type;
-	enum{INT_TYPE, FLOAT_TYPE, STR_TYPE} val_type;
-	union{
-		int arr_dim;//array dimension
-		int arg_num;//args number of function
-	};
-	node_t *member, *detail;//detail used for define structure member
-};*/
 node_t *root;
-//#define MY_SEMANTIC_DEBUG
-#ifdef MY_SEMANTIC_DEBUG
+
+//#define MY_PF3_DEBUG
+#ifdef MY_PF3_DEBUG
 #define pf3(x) printf("%s\n", #x)
 #else
 #define pf3(x) 
@@ -95,18 +100,21 @@ node_t *root;
 #define myassert assert
 #else
 #define myassert
-#endif
+#endif 
 
 /*Lab3*/
+/*define -1 as the default*/
+#define KIND -1
 /*definition of operand number*/
 struct Operand{
-	enum{VARIABLE, CONSTANT, ADDRESS, TEMP,
-		 LABEL, NAME} kind;
+	enum{VARIABLE, CONSTANT, TEMP, LABEL, NAME} kind;
 	union{
 		//int var_no;
 		int value;
 		char cVal[33];//for function name
 	}u;
+	node_t *type;//for structue ptr
+	ArrNodes *arrs;//for array ptr
 };
 typedef struct Operand Operand;
 /*Operand link-list*/
