@@ -247,9 +247,9 @@ Operand *translate_Exp(node_t *cur, int place){
 			int label1 = newLabel();int label2 = newLabel();
 			newInterCodes(ASSIGN, place, TEMP, 0, CONSTANT, -1, -1);
 			translate_Cond(cur, label1, label2);
-			newInterCodes(LABEL_DEF, label1, TEMP, -1, -1, -1, -1);
+			newInterCodes(LABEL_DEF, label1, LABEL, -1, -1, -1, -1);
 			newInterCodes(ASSIGN, place, TEMP, 1, CONSTANT, -1, -1);
-			newInterCodes(LABEL_DEF, label2, TEMP, -1, -1, -1, -1);
+			newInterCodes(LABEL_DEF, label2, LABEL, -1, -1, -1, -1);
 			ret = newOperand(TEMP, place);
 		}
 		else{
@@ -275,7 +275,10 @@ Operands *translate_Args(node_t *cur){
 	node_t *cbro = child->bro;
 	if(cbro!=NULL){//cbro: COMMA
 		Operands *ops2 = translate_Args(cbro->bro);
-		ConnectOperands(ops1, ops2);
+		/*notice that Args add to stack 
+		in the opposite direction against Param*/
+		ConnectOperands(ops2, ops1);
+		return ops2;
 	}
 	return ops1;
 }
