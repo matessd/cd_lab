@@ -10,9 +10,10 @@ void subTree_Exp_DFS(node_t *cur);
 node_t *Def_DFS(node_t *cur, int mode);
 node_t *StructSpecifier_DFS(node_t *cur);
 
-ArrNodes* newArrNodes(int size){
+ArrNodes* newArrNodes(int asize, int usize){
 	ArrNodes *ret = malloc(sizeof(ArrNodes));
-	ret->arr.size = size;
+	ret->arr.asize = asize;
+	ret->arr.usize = usize;
 	ret->next = NULL;
 }
 
@@ -22,6 +23,30 @@ ArrNodes *connectArrNodes(ArrNodes *p1, ArrNodes *p2){
 		ptmp=ptmp->next;
 	ptmp->next = p2;
 	return p1;
+}
+
+int getTypeSize(node_t *type);
+int compute_ArrNodes_usize(ArrNodes *arrs, node_t *type){
+	if(arrs==NULL) return 0;
+	int usize;
+	if(arrs->next==NULL){
+		if(type==NULL) usize = 4;
+		else usize = getTypeSize(type);
+		arrs->arr.usize = usize;
+		return usize;
+	}else{
+		usize = compute_ArrNodes_usize(arrs->next, type);
+		usize = usize * arrs->next->arr.asize;
+		arrs->arr.usize = usize;
+		return usize;
+	}
+}
+
+int getTypeSize(node_t *type){
+	myassert(type!=NULL);
+	myassert(0);
+	//TODO
+	return 4;
 }
 
 void deal_env_lab3();
@@ -222,8 +247,22 @@ void insert_symbol(int mode, int lineno, sym_t *pSym){
 	  default: break;
 	}
 	/*insert val into current symbol table*/
-	//assert(curEnv == envStack[envTop]);
-	sym_t *env = NULL, *nxt=NULL;
+	/*sym_t *cur=NULL; 
+	int dep;
+	if(mode==OVER_MODE) dep = 0;
+	else dep = envTop;
+	cur = envStack[dep];
+	if(cur==NULL){
+		cur = curEnv = envStack[dep] = pSym;
+	}else{
+		while(cur->nxt!=NULL) 
+			cur=cur->nxt;
+		cur->nxt = pSym;
+		cur = pSym;
+	}
+	cur->nxt = NULL;*/
+	sym_t *cur = NULL, *nxt=NULL;
+	sym_t *env;
 	if(mode==OVER_MODE){
 		//assert(0);
 		env = envStack[0];
@@ -270,10 +309,6 @@ int Str_cmp(node_t *p1, node_t *p2){
 
 int Type_cmp(node_t *p1, node_t *p2){
 	int ret = 0;
-	//printf("%s---%s\n",p1->cVal,p2->cVal);
-	//printf("%d---%d\n",p1->val_type,p2->val_type);
-	//printf("%d---%d\n",p1->arr_dim,p2->arr_dim);
-	//printf("%d---%d\n",p1->id_type,p2->id_type);
 	if(p1->id_type!=STR_TYPE || p2->id_type!=STR_TYPE){
 	  //printf("1\n");
 	  if(p1->id_type!=STR_TYPE && p2->id_type!=STR_TYPE){
@@ -391,7 +426,7 @@ void *VarDec_DFS(node_t *dst, sym_t *cur){
 		//VarDec LB INT RB
 		VarDec_DFS(dst, child);
 		/*L3*/
-		ArrNodes *arrs = newArrNodes(child->bro->bro->iVal);
+		ArrNodes *arrs = newArrNodes(child->bro->bro->iVal, -1);
 		if(dst->arrs==NULL){
 			dst->arrs = arrs;
 		}else{
@@ -399,6 +434,9 @@ void *VarDec_DFS(node_t *dst, sym_t *cur){
 		}
 	}
 	dst->arr_dim++;
+	/*L3*/
+	if(dst==cur)
+		compute_ArrNodes_usize(dst->arrs, dst->detail);	
 }
 
 enum{STR_MODE, VAR_MODE};
@@ -407,6 +445,7 @@ node_t *Dec_DFS(node_t *cur, sym_t *type, int val_type, int mode){
 	child->arr_dim = -1;
 	child->arrs = NULL;
 	child->member = child->detail = NULL;
+	child->argflg = 0;
 	if(type==NULL){
 	  child->id_type = VAR_TYPE;
 	  child->val_type = val_type;
@@ -590,6 +629,7 @@ node_t *ParamDec_DFS(node_t *cur){
 	child->bro->arr_dim = -1;
 	child->bro->arrs = NULL;
 	child->bro->detail = child->bro->member = NULL;
+	child->bro->argflg = 1;
 	node_t *type = NULL;
 	VarDec_DFS(child->bro, child->bro);
 	//printf("2\n");
@@ -627,7 +667,7 @@ node_t *VarList_DFS(node_t *cur){
 	return p1; 
 }
 
-void FunDec_DFS(node_t *cur, node_t* type, int val_type, int fun_flg){
+void FunDec_DFS(node_t *cur, node_t* type, int val_type){
 	node_t *child = cur->child;//ID
 	strcpy(cur->cVal, child->cVal);
 	//printf("1\n");
@@ -650,10 +690,6 @@ void FunDec_DFS(node_t *cur, node_t* type, int val_type, int fun_flg){
 		//no args
 		cur->member = NULL;
 	}
-	/*if(fun_flg==FUN_DEC){
-		envTop--;
-		curEnv = envStack[envTop] = NULL;
-	}*/
 }
 
 void ExtDecList_DFS(node_t *cur, node_t *type, int val_type){
@@ -661,6 +697,7 @@ void ExtDecList_DFS(node_t *cur, node_t *type, int val_type){
 	child->arr_dim = -1;
 	child->arrs = NULL;
 	child->detail = child->member = NULL;
+	child->argflg = 0;
 	VarDec_DFS(child, child);
 	if(type==NULL){
 		child->id_type = VAR_TYPE;
@@ -699,11 +736,11 @@ void ExtDef_DFS(node_t *cur){
 	    break;
 	  case myFunDec:
 		if(child->bro->bro->syntype==mySEMI){
-			FunDec_DFS(child->bro, type, val_type, FUN_DEC);
+			FunDec_DFS(child->bro, type, val_type);
 			insert_fun_symbol(child->bro->lineno, child->bro, &funDecEnv);
 		}
 		else{
-			FunDec_DFS(child->bro, type, val_type, FUN_DEF);
+			FunDec_DFS(child->bro, type, val_type);
 			insert_fun_symbol(child->bro->lineno, child->bro, &funEnv);
 		}
 		break;
@@ -947,17 +984,17 @@ void subTree_DFS(node_t* cur, int mode){
 	}
 }
 
-extern int VarTable_insert(const char *cVal);//in file intercode.c
+extern int VarTable_insert(const char *cVal, sym_t *sym);//in file intercode.c
 /*to copy deleted table to VarTable, useful in Lab3*/
 void deal_env_lab3(){
 	sym_t *cur = curEnv;
 	if(cur==NULL) return;
 	while(cur->nxt!=NULL){
 		sym_t *nxt = cur->nxt;
-		VarTable_insert(cur->cVal);
+		VarTable_insert(cur->cVal, cur);
 		cur = nxt;
 	}
-	VarTable_insert(cur->cVal);
+	VarTable_insert(cur->cVal, cur);
 }
 
 

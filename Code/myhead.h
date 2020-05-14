@@ -52,7 +52,8 @@ static const char *const mytname[] =
 };
 
 struct ArrNode{
-	int size;
+	int asize;//size for array,int a[5] is 5
+	int usize;//size for one unit type, int is 4
 };
 typedef struct ArrNode ArrNode;
 struct ArrNodes{
@@ -82,8 +83,8 @@ struct node_t{
 	enum{INT_TYPE, FLOAT_TYPE, STR_VAR, STR_DEF} val_type;
 	int arr_dim;//array dimension cnt
 	ArrNodes *arrs;//stored array size
+	int argflg;//if this variable is Param
 
-	enum{FUN_DEC, FUN_DEF}fun_flg;//now no use
 	struct node_t *member, *detail;
 };
 node_t *root;
@@ -107,7 +108,8 @@ node_t *root;
 #define KIND -1
 /*definition of operand number*/
 struct Operand{
-	enum{VARIABLE, CONSTANT, TEMP, LABEL, NAME} kind;
+	enum{VARIABLE, CONSTANT, TEMP, LABEL, NAME,
+		 V_ADDRESS, T_ADDRESS} kind;
 	union{
 		//int var_no;
 		int value;
@@ -123,12 +125,18 @@ struct Operands{
 	struct Operands *prev, *next;
 };
 typedef struct Operands Operands;
+
+static const char *const g_SignName[] ={
+	"=", "+", "-", "*", "/",
+	"label", "to", "<", ">", "<=", ">=", "==", "!="
+};
 /*a line of intercode*/
 struct InterCode{
 	/*DIV redeclaration*/
-	enum{ASSIGN, ADD, SUB, MUL, DIV_L3, 
+	enum{ASSIGN/*assign for basic var*/, ADD, SUB, MUL, DIV_L3, 
 	     LABEL_DEF, JMP, JL, JG, JLE, JGE, JE, JNE,
-		 RET, FUN, CALL, ARG, PARAM, READ, WRITE} kind;
+		 RET, FUN, CALL, ARG, PARAM, READ, WRITE,
+		 ADD_ASSIGN/*assign for two pointer*/,DEC_L3} kind;
 	/*union{
 		struct {Operand left, right;} assisn;
 		struct {Operand result, op1, op2;} binop;
@@ -144,7 +152,8 @@ struct InterCodes{
 typedef struct InterCodes InterCodes;
 /**/
 struct VarNode{
-	char cVal[33];//variable name
+	//char cVal[33];//variable name
+	sym_t *sym;
 	int var_no;//corresponding count, like v1,v2,v3,...
 	struct VarNode *next;
 };

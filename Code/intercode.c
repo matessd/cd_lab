@@ -1,43 +1,91 @@
 #include "myhead.h"
 InterCodes *g_CodesHead=NULL, *g_CodesTail=NULL;
-VarNode *g_VarTable=NULL;//global table for variable search
+VarNode *g_VarHead=NULL, *g_VarTail=NULL;//global table for variable search
 int g_VarNo=0;//remember number for next variable
 int g_tempno=0;//remember number for temp variable
 int g_labelno=0;
 /*stored operand in string type, when we print*/
-char g_cresult[35], g_cop1[35], g_cop2[35];
+char g_cresult[35], g_cop1[35], g_cop2[35], g_copy[40];
 /*set nullop as default Operand*/
 Operand *nullop;
 
 InterCodes *newInterCodes(int codekind, Operand *result, Operand *op1, Operand *op2);
+Operand *newOperand(int kind, int value, node_t *type, ArrNodes *arrs);
+int newTemp();
+extern int getTypeSize(node_t *type);//in semantic.c
+
+int if_Operand_Address(Operand *op){
+	if(op->kind==V_ADDRESS||op->kind==T_ADDRESS)
+		return 1;
+	else return 0;
+}
 
 /*gen ASSIGN code, 
 **for Exp ASSIGN Exp, and VarDec ASSIGN Exp
 */
 Operand *assign_Var(Operand *left, Operand *right){
+	//never assign value for structure
+	myassert(left->type==NULL && right->type==NULL);
+	int addflg1 = if_Operand_Address(left);
+	int addflg2 = if_Operand_Address(right);
+	/*four situations for (addflg1, addflg2):
+	**(1,1), (1,0), (0,1), (0,0)
+	**(1,1) for case x=a[i]=b[j]=y or a[]=b[]
+	**(1,0) is the case a[i] = x
+	**(0,1) is because x = a[i] = b[j]
+	*/
 	newInterCodes(ASSIGN, left, right, nullop);
-	//TODO for array and stru
+	if(addflg1 && addflg2){//(1,1)
+		/*two address assign*/
+		Operand *consop = newOperand(CONSTANT, 4, NULL, NULL);
+		myassert(left->arrs == right->arrs);
+		/*when x=a[i]=b[j]=y, Exp of a and Exp of b 
+		** will return address, and only needs assign one byte
+		*/
+		if(left->arrs==NULL){
+			return left;
+		}
+		/*assign for array*/
+		//compute size of byte
+		int size1 = (left->arrs->arr.asize * left->arrs->arr.usize)/4;
+		int size2 = (right->arrs->arr.asize * right->arrs->arr.usize)/4;
+		int size = size1<size2 ? size1:size2;
+		//create temp address to store left and right
+		int t1=newTemp(); int t2 = newTemp();
+		Operand *t1op = newOperand(T_ADDRESS, t1, left->type, left->arrs);
+		Operand *t2op = newOperand(T_ADDRESS, t2, right->type, right->arrs);
+		newInterCodes(ADD_ASSIGN, t1op, left, nullop);
+		newInterCodes(ADD_ASSIGN, t2op, right, nullop);
+		//traverse byte and assign
+		for(int i=1; i<size; i++){
+			newInterCodes(ADD, t1op, t1op, consop);
+			newInterCodes(ADD, t2op, t2op, consop);
+			newInterCodes(ASSIGN, t1op, t2op, nullop);
+		} 
+		free(t1op); free(t2op); free(consop);
+	}
 	return left;
 }
 
 /*Description: insert variable into table
 Args: cVal is the identifier name
 */
-int VarTable_insert(const char *cVal){
+int VarTable_insert(const char *cVal, sym_t *sym){
 	VarNode *cur;
-	if(g_VarTable==NULL){
-		g_VarTable = malloc(sizeof(VarNode));
-		cur = g_VarTable;
-		cur->next = NULL;
+	if(g_VarHead==NULL){
+		myassert(g_VarTail==NULL);
+		g_VarHead = g_VarTail = malloc(sizeof(VarNode));
+		cur = g_VarHead;
 	}
 	else{
 		/*insert tot head of list*/
 		cur = malloc(sizeof(VarNode));
-		cur->next = g_VarTable;
-		g_VarTable = cur;
+		g_VarTail->next = cur;
+		g_VarTail = cur;
 	}
-	strcpy(cur->cVal, cVal);
 	cur->var_no = ++g_VarNo;
+	cur->sym = sym;
+	cur->next = NULL;
 	return 0;
 }
 
@@ -45,16 +93,16 @@ int VarTable_insert(const char *cVal){
 description: search VarTable
 return: when not find target, return -1
 */
-int VarTable_search(const char *cVal){
-	VarNode *cur = g_VarTable;
+VarNode *VarTable_search(const char *cVal){
+	VarNode *cur = g_VarHead;
 	while(cur->next!=NULL){
-		if(strcmp(cur->cVal, cVal)==0)
-			return cur->var_no;
+		if(strcmp(cur->sym->cVal, cVal)==0)
+			return cur;
 		cur = cur->next;
 	}
-	if(strcmp(cur->cVal, cVal)==0)
-		return cur->var_no;
-	return -1;
+	if(strcmp(cur->sym->cVal, cVal)==0)
+		return cur;
+	return NULL;
 }
 
 void addCodesTail(InterCodes *codes){
@@ -140,9 +188,28 @@ Operand *translate_Exp(node_t *cur, int place){
 		if(cbro==NULL)
 		{//ID
 			pf3(ExpID1);
-			var_no = VarTable_search(child->cVal);
-			myassert(var_no>0);
-			ret = newOperand(VARIABLE, var_no, NULL, NULL);
+			VarNode *varnode = VarTable_search(child->cVal);
+			myassert(varnode->var_no>0);
+			int var_no = varnode->var_no;
+			node_t *type = varnode->sym->detail;
+			ArrNodes *arrs = varnode->sym->arrs;
+			if(type!=NULL || arrs!=NULL)
+			{//ret address
+				if(varnode->sym->argflg==0){//variable store space
+					ret = newOperand(T_ADDRESS, place, type, arrs);
+					Operand *op1 = newOperand(VARIABLE, var_no, type, arrs);
+					newInterCodes(ADD_ASSIGN, ret, op1, nullop);
+					free(op1);
+				}
+				else
+				{//variable store address
+					ret = newOperand(V_ADDRESS, var_no, type, arrs);
+				}
+			}
+			else
+			{//ret variable
+				ret = newOperand(VARIABLE, var_no, NULL, NULL);
+			}
 			//printf("%s--%d\n",child->cVal,var_no);
 		}
 		else if(cbro->bro->syntype==myRP)
@@ -241,12 +308,52 @@ Operand *translate_Exp(node_t *cur, int place){
 			assign_Var(result, op1);
 			free(op1);
 			ret = result;
-			//TODO
 		}
 		else if(cbro->syntype==myLB||cbro->syntype==myDOT)
 		{
-			//TODO
-			myassert(0);
+			if(cbro->syntype==myLB)
+			{//Exp LB Exp RB
+				int t1 = newTemp(); int t2 = newTemp();
+				Operand *left = translate_Exp(child, t1);
+				Operand *right = translate_Exp(cbro->bro, t2);
+
+				myassert(left->arrs!=NULL);
+				int usize = left->arrs->arr.usize;
+				ArrNodes *nxtarrs = left->arrs->next;
+				/*compute bias of array*/
+				int t3 = newTemp();
+				Operand *consop =newOperand(CONSTANT, usize,NULL,NULL);
+				Operand *biasop = newOperand(TEMP, t3, NULL, NULL);
+				newInterCodes(MUL, biasop, right, consop);
+				
+				int baseflg = 0;//judge if return basic or address type
+				//to array end and not structure
+				if(left->type==NULL || left->arrs->next==NULL)
+					baseflg = 1;
+				//exception situation, like a[i]=x
+				if(cur->bro!=NULL)
+					if(cur->bro->syntype==myASSIGNOP)
+						baseflg = 0;
+				if(baseflg)
+				{//ret basic variable
+					int t4 = newTemp();
+					Operand *op = newOperand(T_ADDRESS, t4, NULL, NULL);
+					newInterCodes(ADD, op, left, biasop);
+					ret = newOperand(TEMP, place, NULL, NULL);
+					newInterCodes(ASSIGN, ret, op, nullop);
+					free(op);
+				}
+				else
+				{//ret address variable
+					ret = newOperand(T_ADDRESS, place, left->type,nxtarrs);
+					newInterCodes(ADD, ret, left, biasop);
+				}
+				free(consop); free(biasop);
+			}
+			else
+			{//TODO
+				myassert(0);
+			}
 		}
 		else if(cbro->syntype==myRELOP 
 				||cbro->syntype==myAND || cbro->syntype==myOR
@@ -486,12 +593,31 @@ Operand *translate_VarDec(node_t *cur);
 void translate_Dec(node_t *cur){
 	node_t *child = cur->child;//VarDec
 	Operand *op1 = translate_VarDec(child);	
-	if(child->bro!=NULL){
-		//printf("%d--%d\n",myExp,child->bro->bro->syntype);
-		myassert(child->bro->bro->syntype==myExp);
-		Operand *op2 = translate_Exp(child->bro->bro, newTemp());
-		assign_Var(op1, op2);
+	if(op1->arrs!=NULL || op1->type!=NULL){
+		int size;
+		if(op1->arrs==NULL) size = getTypeSize(op1->type);
+		else size = op1->arrs->arr.asize * op1->arrs->arr.usize;
+
+		Operand *consop = newOperand(CONSTANT, size, NULL, NULL);
+		newInterCodes(DEC_L3, op1, consop, nullop);
+		free(consop);
 	}
+	if(child->bro!=NULL){
+		//child->bro: ASSIGNOP
+		Operand *op2 = translate_Exp(child->bro->bro, newTemp());
+
+		if(op1->arrs!=NULL || op1->type!=NULL){
+			myassert(op1->arrs==NULL);//array can't assign at initial
+			Operand *left = newOperand(T_ADDRESS, newTemp(), op1->type, op1->arrs);
+			newInterCodes(ADD_ASSIGN, left, op1, nullop);
+			assign_Var(left, op2);
+			free(left);
+		}else{
+			assign_Var(op1, op2);
+		}
+		free(op2);
+	}
+	free(op1);
 	//TODO for array...
 }
 
@@ -542,8 +668,11 @@ void translate_ParamDec(node_t *cur){
 Operand *translate_VarDec(node_t *cur){
 	/*the cVal of VarDec is the same as ID
 	**Because we copy when call VarDec_DFS in semantic.c*/
-	int var_no = VarTable_search(cur->cVal);
-	Operand *op =newOperand(VARIABLE, var_no, NULL, NULL);
+	VarNode *varnode = VarTable_search(cur->cVal);
+	int var_no = varnode->var_no;
+	node_t *detail = varnode->sym->detail;
+	ArrNodes *arrs = varnode->sym->arrs;
+	Operand *op =newOperand(VARIABLE, var_no, detail, arrs);
 	return op;
 }
 
@@ -592,24 +721,42 @@ void InterCodes_DFS(char *filename){
 
 void pt_Operand(Operand *op, char *dst);
 void pt_InterCodes(FILE *fp, InterCodes *codes){
-	pt_Operand(&(codes->code.result), g_cresult);
-	pt_Operand(&(codes->code.op1), g_cop1);
-	pt_Operand(&(codes->code.op2), g_cop2);
+	Operand *left = &(codes->code.result);
+	Operand *op1 = &(codes->code.op1);
+	Operand *op2 = &(codes->code.op2);
+	pt_Operand(left, g_cresult);
+	pt_Operand(op1, g_cop1);
+	pt_Operand(op2, g_cop2);
+	int addflg1, addflg2, addflg3;
+	addflg1 = if_Operand_Address(left);
+	addflg2 = if_Operand_Address(op1);
+	addflg3 = if_Operand_Address(op2);
 	switch(codes->code.kind){
 	  case ASSIGN:
+		if(addflg1){
+			sprintf(g_copy, "*%s", g_cresult);
+			strcpy(g_cresult, g_copy);
+		}
+		if(addflg2){
+			sprintf(g_copy, "*%s", g_cop1);
+			strcpy(g_cop1, g_copy);
+		}
+		fprintf(fp, "%s := %s\n", g_cresult, g_cop1);
+		break;
+	  case ADD_ASSIGN:
+		myassert(addflg1==1);
+		if(addflg2==0){
+			sprintf(g_copy, "&%s", g_cop1);
+			strcpy(g_cop1, g_copy);
+		}
 		fprintf(fp, "%s := %s\n", g_cresult, g_cop1);
 		break;
 	  case ADD:
-		fprintf(fp, "%s := %s + %s\n", g_cresult, g_cop1, g_cop2);
-		break;
 	  case SUB:
-		fprintf(fp, "%s := %s - %s\n", g_cresult, g_cop1, g_cop2);
-		break;
-	  case MUL: 
-		fprintf(fp, "%s := %s * %s\n", g_cresult, g_cop1, g_cop2);
-		break;
+	  case MUL:
 	  case DIV_L3:
-		fprintf(fp, "%s := %s / %s\n", g_cresult, g_cop1, g_cop2);
+		//myassert(addflg1==addflg2 && addflg2==addflg3);
+		fprintf(fp, "%s := %s %s %s\n", g_cresult, g_cop1, g_SignName[codes->code.kind], g_cop2);
 		break;
 	  case LABEL_DEF:
 		fprintf(fp, "LABEL %s :\n", g_cresult);
@@ -618,22 +765,15 @@ void pt_InterCodes(FILE *fp, InterCodes *codes){
 		fprintf(fp, "GOTO %s\n", g_cresult);
 		break;
 	  case JL:
-		fprintf(fp, "IF %s < %s GOTO %s\n", g_cop1, g_cop2, g_cresult);
-		break;
 	  case JG:
-		fprintf(fp, "IF %s > %s GOTO %s\n", g_cop1, g_cop2, g_cresult);
-		break;
 	  case JLE:
-		fprintf(fp, "IF %s <= %s GOTO %s\n", g_cop1, g_cop2, g_cresult);
-		break;
 	  case JGE:
-		fprintf(fp, "IF %s >= %s GOTO %s\n", g_cop1, g_cop2, g_cresult);
-		break;
-	  case JE: 
-		fprintf(fp, "IF %s == %s GOTO %s\n", g_cop1, g_cop2, g_cresult);
-		break;
+	  case JE:
 	  case JNE:
-		fprintf(fp, "IF %s != %s GOTO %s\n", g_cop1, g_cop2, g_cresult);
+		fprintf(fp, "IF %s %s %s GOTO %s\n", g_cop1, g_SignName[codes->code.kind], g_cop2, g_cresult);
+		break;
+	  case DEC_L3:
+		fprintf(fp, "DEC %s %s\n", g_cresult, &(g_cop1[1]));
 		break;
 	  case RET:
 		fprintf(fp, "RETURN %s\n\n", g_cresult);
@@ -645,7 +785,16 @@ void pt_InterCodes(FILE *fp, InterCodes *codes){
 		fprintf(fp, "%s := CALL %s\n", g_cresult, g_cop1);
 		break;
 	  case ARG:
-		fprintf(fp, "ARG %s\n", g_cresult);
+		if(left->type==NULL && left->arrs==NULL){
+			fprintf(fp, "ARG %s\n", g_cresult);
+		}else{
+			if(addflg1){
+				fprintf(fp, "ARG %s\n", g_cresult);
+			}else{
+				myassert(0);//not yet
+				fprintf(fp, "ARG &%s\n", g_cresult);
+			}
+		}
 		break;
 	  case PARAM:
 		fprintf(fp, "PARAM %s\n", g_cresult);
@@ -664,12 +813,14 @@ void pt_InterCodes(FILE *fp, InterCodes *codes){
 void pt_Operand(Operand *op, char *dst){
 	switch(op->kind){
 	  case VARIABLE:
+	  case V_ADDRESS:
 		sprintf(dst, "v%d", op->u.value);
 		break;
 	  case CONSTANT:
 		sprintf(dst, "#%d", op->u.value);
 		break;
 	  case TEMP:
+	  case T_ADDRESS:
 		sprintf(dst, "t%d", op->u.value);
 		break;
 	  case LABEL:
