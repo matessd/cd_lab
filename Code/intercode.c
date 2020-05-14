@@ -311,49 +311,70 @@ Operand *translate_Exp(node_t *cur, int place){
 		}
 		else if(cbro->syntype==myLB||cbro->syntype==myDOT)
 		{
+			int t1 = newTemp();
+			Operand *left = translate_Exp(child, t1);
+			Operand *biasop = NULL;
+			//arrs for final Operand we ret
+			ArrNodes *nxtarrs = NULL;
+			//type for final Operand we ret
+			node_t *type = NULL;
+			//judge if return basic or address type
+			int baseflg = 0;
+			
+			//switch LB and DOT
 			if(cbro->syntype==myLB)
 			{//Exp LB Exp RB
-				int t1 = newTemp(); int t2 = newTemp();
-				Operand *left = translate_Exp(child, t1);
-				Operand *right = translate_Exp(cbro->bro, t2);
-
 				myassert(left->arrs!=NULL);
+				int t2 = newTemp();
+				Operand *right = translate_Exp(cbro->bro, t2);
 				int usize = left->arrs->arr.usize;
-				ArrNodes *nxtarrs = left->arrs->next;
 				/*compute bias of array*/
 				int t3 = newTemp();
 				Operand *consop =newOperand(CONSTANT, usize,NULL,NULL);
-				Operand *biasop = newOperand(TEMP, t3, NULL, NULL);
+				biasop = newOperand(TEMP, t3, NULL, NULL);
+				//gen bias code
 				newInterCodes(MUL, biasop, right, consop);
-				
-				int baseflg = 0;//judge if return basic or address type
-				//to array end and not structure
-				if(left->type==NULL || left->arrs->next==NULL)
-					baseflg = 1;
-				//exception situation, like a[i]=x
-				if(cur->bro!=NULL)
-					if(cur->bro->syntype==myASSIGNOP)
-						baseflg = 0;
-				if(baseflg)
-				{//ret basic variable
-					int t4 = newTemp();
-					Operand *op = newOperand(T_ADDRESS, t4, NULL, NULL);
-					newInterCodes(ADD, op, left, biasop);
-					ret = newOperand(TEMP, place, NULL, NULL);
-					newInterCodes(ASSIGN, ret, op, nullop);
-					free(op);
-				}
-				else
-				{//ret address variable
-					ret = newOperand(T_ADDRESS, place, left->type,nxtarrs);
-					newInterCodes(ADD, ret, left, biasop);
-				}
-				free(consop); free(biasop);
+				free(right); free(consop);
+				type = left->type;
+				nxtarrs = left->arrs->next;
 			}
 			else
-			{//TODO
-				myassert(0);
+			{//Exp DOT ID
+				//myassert(0);
+				myassert(left->type!=NULL && left->arrs==NULL);
+				/*compute bias of structure*/
+				int bias = getFieldBias(left->type, cbro->bro->cVal);
+				node_t *field = search_field(cbro->bro->cVal, left->type);
+				biasop = newOperand(CONSTANT, bias, NULL, NULL);
+				type = field->detail;
+				nxtarrs = field->arrs;
 			}
+			//merge mode for LB and DOT
+			/*the ret variable is not an array 
+			**and not a structure*/
+			if(type==NULL && nxtarrs==NULL)
+				baseflg = 1;
+			//exception situation, father Exp like a[i]=x
+			if(cur->bro!=NULL)
+				if(cur->bro->syntype==myASSIGNOP)
+					baseflg = 0;
+			if(baseflg)
+			{//ret basic variable
+				int t = newTemp();
+				Operand *op = newOperand(T_ADDRESS, t, NULL, NULL);
+				//ptr + bias
+				newInterCodes(ADD, op, left, biasop);
+				//t1 = *t0, change ptr to real value
+				ret = newOperand(TEMP, place, NULL, NULL);
+				newInterCodes(ASSIGN, ret, op, nullop);
+				free(op);
+			}
+			else
+			{//ret address variable
+				ret = newOperand(T_ADDRESS, place, type, nxtarrs);
+				newInterCodes(ADD, ret, left, biasop);
+			}
+			free(biasop); free(left);
 		}
 		else if(cbro->syntype==myRELOP 
 				||cbro->syntype==myAND || cbro->syntype==myOR
@@ -398,7 +419,7 @@ Operands *translate_Args(node_t *cur){
 	if(cbro!=NULL){//cbro: COMMA
 		Operands *ops2 = translate_Args(cbro->bro);
 		/*notice that Args add to stack 
-		in the opposite direction against Param*/
+		  in the opposite direction against Param*/
 		ConnectOperands(ops2, ops1);
 		return ops2;
 	}
@@ -605,7 +626,6 @@ void translate_Dec(node_t *cur){
 	if(child->bro!=NULL){
 		//child->bro: ASSIGNOP
 		Operand *op2 = translate_Exp(child->bro->bro, newTemp());
-
 		if(op1->arrs!=NULL || op1->type!=NULL){
 			myassert(op1->arrs==NULL);//array can't assign at initial
 			Operand *left = newOperand(T_ADDRESS, newTemp(), op1->type, op1->arrs);
@@ -618,7 +638,6 @@ void translate_Dec(node_t *cur){
 		free(op2);
 	}
 	free(op1);
-	//TODO for array...
 }
 
 void translate_StmtList(node_t *cur){
@@ -635,8 +654,10 @@ void translate_FunDec(node_t *cur){
 	pf3(FunDec);
 	node_t *child = cur->child;//ID
 	/*insert FUNCTION name:*/
+	//printf("1\n");
 	Operand *op = newOperand(NAME, KIND, NULL, NULL);
 	InterCodes *codes = newInterCodes(FUN, op,nullop,nullop);
+	//printf("2\n");
 	free(op);
 	strcpy(codes->code.result.u.cVal, child->cVal);
 	/*define param*/
@@ -663,11 +684,11 @@ void translate_ParamDec(node_t *cur){
 }
 
 /*according to the cVal of VarDec node,
-**get the Operand we need
-*/
+ **get the Operand we need
+ */
 Operand *translate_VarDec(node_t *cur){
 	/*the cVal of VarDec is the same as ID
-	**Because we copy when call VarDec_DFS in semantic.c*/
+	 **Because we copy when call VarDec_DFS in semantic.c*/
 	VarNode *varnode = VarTable_search(cur->cVal);
 	int var_no = varnode->var_no;
 	node_t *detail = varnode->sym->detail;
@@ -689,7 +710,6 @@ void translate_root(char *filename){
 
 void translate_ExtDef(node_t *cur);
 void translate_ExtDefList(node_t *cur){
-	pf3(ExtDefList);
 	node_t *child = cur->child;
 	node_t *cbro = child->bro;
 	translate_ExtDef(child);
@@ -699,11 +719,13 @@ void translate_ExtDefList(node_t *cur){
 }
 
 void translate_ExtDef(node_t *cur){
-	pf3(ExtDef);
 	node_t *child = cur->child;//Specifier
-	myassert(child->bro->syntype==myFunDec);
-	translate_FunDec(child->bro);
-	translate_CompSt(child->bro->bro);
+	//myassert(child->bro->syntype==myFunDec);
+	if(child->bro->syntype==myFunDec){
+		translate_FunDec(child->bro);
+		myassert(child->bro->bro->syntype==myCompSt);
+		translate_CompSt(child->bro->bro);
+	}
 }
 
 void pt_InterCodes(FILE *fp, InterCodes *codes);
@@ -732,106 +754,106 @@ void pt_InterCodes(FILE *fp, InterCodes *codes){
 	addflg2 = if_Operand_Address(op1);
 	addflg3 = if_Operand_Address(op2);
 	switch(codes->code.kind){
-	  case ASSIGN:
-		if(addflg1){
-			sprintf(g_copy, "*%s", g_cresult);
-			strcpy(g_cresult, g_copy);
-		}
-		if(addflg2){
-			sprintf(g_copy, "*%s", g_cop1);
-			strcpy(g_cop1, g_copy);
-		}
-		fprintf(fp, "%s := %s\n", g_cresult, g_cop1);
-		break;
-	  case ADD_ASSIGN:
-		myassert(addflg1==1);
-		if(addflg2==0){
-			sprintf(g_copy, "&%s", g_cop1);
-			strcpy(g_cop1, g_copy);
-		}
-		fprintf(fp, "%s := %s\n", g_cresult, g_cop1);
-		break;
-	  case ADD:
-	  case SUB:
-	  case MUL:
-	  case DIV_L3:
-		//myassert(addflg1==addflg2 && addflg2==addflg3);
-		fprintf(fp, "%s := %s %s %s\n", g_cresult, g_cop1, g_SignName[codes->code.kind], g_cop2);
-		break;
-	  case LABEL_DEF:
-		fprintf(fp, "LABEL %s :\n", g_cresult);
-		break;
-	  case JMP:
-		fprintf(fp, "GOTO %s\n", g_cresult);
-		break;
-	  case JL:
-	  case JG:
-	  case JLE:
-	  case JGE:
-	  case JE:
-	  case JNE:
-		fprintf(fp, "IF %s %s %s GOTO %s\n", g_cop1, g_SignName[codes->code.kind], g_cop2, g_cresult);
-		break;
-	  case DEC_L3:
-		fprintf(fp, "DEC %s %s\n", g_cresult, &(g_cop1[1]));
-		break;
-	  case RET:
-		fprintf(fp, "RETURN %s\n\n", g_cresult);
-		break;
-	  case FUN:
-		fprintf(fp, "FUNCTION %s :\n", g_cresult);
-		break;
-	  case CALL:
-		fprintf(fp, "%s := CALL %s\n", g_cresult, g_cop1);
-		break;
-	  case ARG:
-		if(left->type==NULL && left->arrs==NULL){
-			fprintf(fp, "ARG %s\n", g_cresult);
-		}else{
+		case ASSIGN:
 			if(addflg1){
+				sprintf(g_copy, "*%s", g_cresult);
+				strcpy(g_cresult, g_copy);
+			}
+			if(addflg2){
+				sprintf(g_copy, "*%s", g_cop1);
+				strcpy(g_cop1, g_copy);
+			}
+			fprintf(fp, "%s := %s\n", g_cresult, g_cop1);
+			break;
+		case ADD_ASSIGN:
+			myassert(addflg1==1);
+			if(addflg2==0){
+				sprintf(g_copy, "&%s", g_cop1);
+				strcpy(g_cop1, g_copy);
+			}
+			fprintf(fp, "%s := %s\n", g_cresult, g_cop1);
+			break;
+		case ADD:
+		case SUB:
+		case MUL:
+		case DIV_L3:
+			//myassert(addflg1==addflg2 && addflg2==addflg3);
+			fprintf(fp, "%s := %s %s %s\n", g_cresult, g_cop1, g_SignName[codes->code.kind], g_cop2);
+			break;
+		case LABEL_DEF:
+			fprintf(fp, "LABEL %s :\n", g_cresult);
+			break;
+		case JMP:
+			fprintf(fp, "GOTO %s\n", g_cresult);
+			break;
+		case JL:
+		case JG:
+		case JLE:
+		case JGE:
+		case JE:
+		case JNE:
+			fprintf(fp, "IF %s %s %s GOTO %s\n", g_cop1, g_SignName[codes->code.kind], g_cop2, g_cresult);
+			break;
+		case DEC_L3:
+			fprintf(fp, "DEC %s %s\n", g_cresult, &(g_cop1[1]));
+			break;
+		case RET:
+			fprintf(fp, "RETURN %s\n\n", g_cresult);
+			break;
+		case FUN:
+			fprintf(fp, "FUNCTION %s :\n", g_cresult);
+			break;
+		case CALL:
+			fprintf(fp, "%s := CALL %s\n", g_cresult, g_cop1);
+			break;
+		case ARG:
+			if(left->type==NULL && left->arrs==NULL){
 				fprintf(fp, "ARG %s\n", g_cresult);
 			}else{
-				myassert(0);//not yet
-				fprintf(fp, "ARG &%s\n", g_cresult);
+				if(addflg1){
+					fprintf(fp, "ARG %s\n", g_cresult);
+				}else{
+					myassert(0);//not yet
+					fprintf(fp, "ARG &%s\n", g_cresult);
+				}
 			}
-		}
-		break;
-	  case PARAM:
-		fprintf(fp, "PARAM %s\n", g_cresult);
-		break;
-	  case READ:
-		fprintf(fp, "READ %s\n", g_cresult);
-		break;
-	  case WRITE:
-		fprintf(fp, "WRITE %s\n", g_cresult);
-		break;
-	  default: myassert(0);
-		break;
+			break;
+		case PARAM:
+			fprintf(fp, "PARAM %s\n", g_cresult);
+			break;
+		case READ:
+			fprintf(fp, "READ %s\n", g_cresult);
+			break;
+		case WRITE:
+			fprintf(fp, "WRITE %s\n", g_cresult);
+			break;
+		default: myassert(0);
+				 break;
 	}
 }
 
 void pt_Operand(Operand *op, char *dst){
 	switch(op->kind){
-	  case VARIABLE:
-	  case V_ADDRESS:
-		sprintf(dst, "v%d", op->u.value);
-		break;
-	  case CONSTANT:
-		sprintf(dst, "#%d", op->u.value);
-		break;
-	  case TEMP:
-	  case T_ADDRESS:
-		sprintf(dst, "t%d", op->u.value);
-		break;
-	  case LABEL:
-		sprintf(dst, "label%d", op->u.value);
-		break;
-	  case NAME:
-		sprintf(dst, "%s", op->u.cVal);
-		break;
-	  case KIND: 
-		break;
-	  default: myassert(0);
-		break;
+		case VARIABLE:
+		case V_ADDRESS:
+			sprintf(dst, "v%d", op->u.value);
+			break;
+		case CONSTANT:
+			sprintf(dst, "#%d", op->u.value);
+			break;
+		case TEMP:
+		case T_ADDRESS:
+			sprintf(dst, "t%d", op->u.value);
+			break;
+		case LABEL:
+			sprintf(dst, "label%d", op->u.value);
+			break;
+		case NAME:
+			sprintf(dst, "%s", op->u.cVal);
+			break;
+		case KIND: 
+			break;
+		default: myassert(0);
+				 break;
 	}
 }

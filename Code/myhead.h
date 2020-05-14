@@ -14,7 +14,7 @@ enum mytokentype
     myLOWER_THAN_ELSE,
     mySTRUCT,
     myRETURN,
-    myIF,
+    myIF,//9
     myELSE,
     myWHILE,
     mySEMI,
@@ -24,7 +24,7 @@ enum mytokentype
     myAND,
     myRELOP,
     myPLUS,
-    myMINUS,
+    myMINUS,//19
     mySTAR,
     myDIV,
     myNOT,
@@ -88,6 +88,8 @@ struct node_t{
 	struct node_t *member, *detail;
 };
 node_t *root;
+node_t *search_field(char *cVal, node_t *cur);
+int getFieldBias(node_t *type, const char *cVal);
 
 //#define MY_PF3_DEBUG
 #ifdef MY_PF3_DEBUG
@@ -96,7 +98,7 @@ node_t *root;
 #define pf3(x) 
 #endif
 
-#define MY_ASSERT_DEBUG
+//#define MY_ASSERT_DEBUG
 #ifdef MY_ASSERT_DEBUG 
 #define myassert assert
 #else

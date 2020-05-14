@@ -43,10 +43,52 @@ int compute_ArrNodes_usize(ArrNodes *arrs, node_t *type){
 }
 
 int getTypeSize(node_t *type){
+	//myassert(type!=NULL);
+	if(type == NULL) return 4;
+	myassert(type->val_type==STR_DEF);
+	node_t *member = type->member;
+	int size = 0;
+	while(member!=NULL){
+		size += getTypeSize(member->detail);
+		member = member->member;
+	}
+	return size;
+}
+
+node_t *search_field(char *cVal, node_t *cur){
+	node_t *type;
+	if(cur->val_type==STR_VAR){
+		type = cur->detail;
+	}else if(cur->val_type==STR_DEF){
+		//cur is type, not a variable
+		type = cur;
+	}
 	myassert(type!=NULL);
-	myassert(0);
-	//TODO
-	return 4;
+	node_t *member = type->member;
+	while(member!=NULL){
+		if(strcmp(member->cVal, cVal)==0)
+			return member;
+		member = member->member;
+	}
+	return NULL;
+}
+
+int getFieldBias(node_t *type, const char *cVal){
+	myassert(type->val_type==STR_DEF);
+	node_t *member = type->member;
+	int bias = 0;
+	while(member != NULL){
+		if(strcmp(member->cVal, cVal)==0)
+			return bias;
+		if(member->arrs==NULL){//not array
+			bias += getTypeSize(member->detail);
+		}
+		else{//add array asize*uszie
+			bias += member->arrs->arr.asize * member->arrs->arr.usize;
+		}
+		member = member->member;
+	}
+	return bias;
 }
 
 void deal_env_lab3();
@@ -247,21 +289,22 @@ void insert_symbol(int mode, int lineno, sym_t *pSym){
 	  default: break;
 	}
 	/*insert val into current symbol table*/
-	/*sym_t *cur=NULL; 
+	sym_t *cur=NULL; 
 	int dep;
 	if(mode==OVER_MODE) dep = 0;
 	else dep = envTop;
 	cur = envStack[dep];
 	if(cur==NULL){
-		cur = curEnv = envStack[dep] = pSym;
+		cur = curEnv = envStack[dep] = malloc(sizeof(sym_t));
 	}else{
 		while(cur->nxt!=NULL) 
 			cur=cur->nxt;
-		cur->nxt = pSym;
-		cur = pSym;
+		cur->nxt = malloc(sizeof(sym_t));
+		cur = cur->nxt;
 	}
-	cur->nxt = NULL;*/
-	sym_t *cur = NULL, *nxt=NULL;
+	*cur = *pSym;
+	cur->nxt = NULL;
+	/*sym_t *cur = NULL, *nxt=NULL;
 	sym_t *env;
 	if(mode==OVER_MODE){
 		//assert(0);
@@ -289,7 +332,7 @@ void insert_symbol(int mode, int lineno, sym_t *pSym){
 		}
 	}
 	*env = *pSym;
-	env->nxt = nxt;
+	env->nxt = nxt;*/
 }
 
 int Type_cmp(node_t *p1, node_t *p2);
@@ -746,19 +789,6 @@ void ExtDef_DFS(node_t *cur){
 		break;
 	  default: break;
 	}
-}
-
-node_t *search_field(char *cVal, node_t *cur){
-	myassert(cur->val_type==STR_VAR);
-	node_t *type = cur->detail;
-	myassert(type!=NULL);
-	node_t *member = type->member;
-	while(member!=NULL){
-		if(strcmp(member->cVal, cVal)==0)
-			return member;
-		member = member->member;
-	}
-	return NULL;
 }
 
 void Exp_DFS(node_t *cur){
