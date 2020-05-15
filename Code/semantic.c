@@ -43,19 +43,33 @@ ArrNodes *connectArrNodes(ArrNodes *p1, ArrNodes *p2){
 
 int getTypeSize(node_t *type);
 int compute_ArrNodes_usize(ArrNodes *arrs, node_t *type){
-	if(arrs==NULL) return 0;
-	int usize;
+	int unit_size = -1, typesize = 4;
+	if(type != NULL){
+		typesize = getTypeSize(type);
+	}
+	if(arrs==NULL) {
+		return typesize;
+	}
+	int tot_size;
 	if(arrs->next==NULL){
+		unit_size = typesize;
+	}else{
+		unit_size = compute_ArrNodes_usize(arrs->next, type);
+	}
+	arrs->arr.usize = unit_size;
+	tot_size = unit_size * arrs->arr.asize;
+	return tot_size;
+
+	/*if(arrs->next==NULL){
 		if(type==NULL) usize = 4;
 		else usize = getTypeSize(type);
 		arrs->arr.usize = usize;
-		return usize;
 	}else{
 		usize = compute_ArrNodes_usize(arrs->next, type);
 		usize = usize * arrs->next->arr.asize;
 		arrs->arr.usize = usize;
-		return usize;
 	}
+	return usize;*/
 }
 
 int getTypeSize(node_t *type){
@@ -64,12 +78,14 @@ int getTypeSize(node_t *type){
 	myassert(type->val_type==STR_DEF);
 	node_t *member = type->member;
 	int size = 0;
-	int typesize = 0;
+	int member_size = 0;
 	while(member!=NULL){
-		typesize = getTypeSize(member->detail);
+		compute_ArrNodes_usize(member->arrs, member->detail);
 		if(member->arrs!=NULL)
-			typesize *= member->arrs->arr.asize;
-		size += typesize;
+			member_size = member->arrs->arr.asize * member->arrs->arr.usize;
+		else
+			member_size = getTypeSize(member->detail);
+		size += member_size;
 		member = member->member;
 	}
 	return size;
@@ -508,8 +524,8 @@ void *VarDec_DFS(node_t *dst, sym_t *cur){
 	}
 	dst->arr_dim++;
 	/*L3*/
-	if(dst==cur)
-		compute_ArrNodes_usize(dst->arrs, dst->detail);	
+	/*if(dst==cur)
+		compute_ArrNodes_usize(dst->arrs, dst->detail);*/
 }
 
 enum{STR_MODE, VAR_MODE};
@@ -960,10 +976,6 @@ node_t *Args_DFS(node_t *cur){
 	if(child->bro!=NULL)
 		p2 = Args_DFS(child->bro->bro);
 	p1->member = p2;
-	//printf("%d\n", p1->val_type);
-	/*p1->id_type = STR_TYPE;
-	p1->val_type = STR_VAR;
-	p1->arr_dim = 0;*/
 	return p1;
 }
 

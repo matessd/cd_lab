@@ -566,6 +566,7 @@ void translate_Stmt(node_t *cur){
 
 		labelop->u.value = label2;
 		newInterCodes(LABEL_DEF, labelop, nullop, nullop);
+
 		translate_Stmt(child->bro->bro->bro->bro);
 
 		labelop->u.value = label1;
@@ -623,6 +624,12 @@ void translate_Dec(node_t *cur){
 	Operand *op1 = translate_VarDec(child);	
 	if(op1->arrs!=NULL || op1->type!=NULL){
 		int size;
+		/*if(strcmp(child->cVal,"st")==0){
+			node_t *ptr = op1->type->member->member;
+			printf("%s\n",ptr->cVal);
+			printf("%d--%d\n",ptr->arrs->arr.asize, ptr->arrs->arr.usize);
+			myassert(ptr->arrs->next!=NULL);
+		}*/
 		if(op1->arrs==NULL) {
 			size = getTypeSize(op1->type);
 			//printf("%d\n",size);
