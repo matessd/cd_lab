@@ -13,6 +13,7 @@ InterCodes *newInterCodes(int codekind, Operand *result, Operand *op1, Operand *
 Operand *newOperand(int kind, int value, node_t *type, ArrNodes *arrs);
 int newTemp();
 extern int getTypeSize(node_t *type);//in semantic.c
+void OptimizeCodes();
 
 int if_Operand_Address(Operand *op){
 	if(op->kind==V_ADDRESS||op->kind==T_ADDRESS)
@@ -119,8 +120,30 @@ void addCodesTail(InterCodes *codes){
 		g_CodesHead = g_CodesTail = codes;
 	}else{
 		g_CodesTail->next = codes;
+		codes->prev = g_CodesTail;
 		g_CodesTail = codes;
 	}
+}
+
+void delCodes(InterCodes *codes){
+	myassert(codes!=NULL);
+	if(codes==g_CodesHead){
+		g_CodesHead = codes->next;
+		if(g_CodesHead==NULL){
+			g_CodesTail = NULL;
+		}else{
+			g_CodesHead->prev = NULL;
+		}
+	}else if(codes==g_CodesTail){
+		g_CodesTail = codes->prev;
+		g_CodesTail->next = NULL;
+	}else{
+		InterCodes *prev = codes->prev;
+		InterCodes *next = codes->next;
+		prev->next = next;
+		next->prev = prev;
+	}
+	free(codes);
 }
 
 /*new a InterCodes and return pointer
@@ -672,7 +695,6 @@ void translate_FunDec(node_t *cur){
 	pf3(FunDec);
 	node_t *child = cur->child;//ID
 	/*insert FUNCTION name:*/
-	//printf("1\n");
 	Operand *op = newOperand(NAME, KIND, NULL, NULL);
 	InterCodes *codes = newInterCodes(FUN, op,nullop,nullop);
 	//printf("2\n");
@@ -723,6 +745,7 @@ void translate_root(char *filename){
 	if(root->child!=NULL)
 		translate_ExtDefList(root->child);
 	//pf3(sdfsd);
+	OptimizeCodes();
 	InterCodes_DFS(filename);
 	free(nullop);
 	//pf3(3);
@@ -765,6 +788,7 @@ void InterCodes_DFS(char *filename){
 }
 
 void pt_Operand(Operand *op, char *dst);
+void dealPtr(int addflg1, int addflg2, char *dst);
 void pt_InterCodes(FILE *fp, InterCodes *codes){
 	Operand *left = &(codes->code.result);
 	Operand *op1 = &(codes->code.op1);
@@ -800,11 +824,9 @@ void pt_InterCodes(FILE *fp, InterCodes *codes){
 		case SUB:
 		case MUL:
 		case DIV_L3:
-			//myassert(addflg1==addflg2 && addflg2==addflg3);
-			/*if(addflg1==0){
-				sprintf(g_copy, "&%s", g_cop1);
-				strcpy(g_cop1, g_copy);
-			}*/
+			dealPtr(addflg1, addflg2, g_cop1);
+			/*g_cop2 need keep variable*/
+			dealPtr(0, addflg3, g_cop2);
 			fprintf(fp, "%s := %s %s %s\n", g_cresult, g_cop1, g_SignName[codes->code.kind], g_cop2);
 			break;
 		case LABEL_DEF:
@@ -819,12 +841,16 @@ void pt_InterCodes(FILE *fp, InterCodes *codes){
 		case JGE:
 		case JE:
 		case JNE:
+			dealPtr(0, addflg2, g_cop1);
+			dealPtr(0, addflg3, g_cop2);
 			fprintf(fp, "IF %s %s %s GOTO %s\n", g_cop1, g_SignName[codes->code.kind], g_cop2, g_cresult);
 			break;
 		case DEC_L3:
+			//myassert()
 			fprintf(fp, "DEC %s %s\n", g_cresult, &(g_cop1[1]));
 			break;
 		case RET:
+			dealPtr(0, addflg1, g_cresult);
 			fprintf(fp, "RETURN %s\n\n", g_cresult);
 			break;
 		case FUN:
@@ -834,6 +860,8 @@ void pt_InterCodes(FILE *fp, InterCodes *codes){
 			fprintf(fp, "%s := CALL %s\n", g_cresult, g_cop1);
 			break;
 		case ARG:
+			/*dealPtr(0, addflg1, g_cresult);
+			fprintf(fp, "ARG %s\n", g_cresult);*/
 			if(left->type==NULL && left->arrs==NULL){
 				fprintf(fp, "ARG %s\n", g_cresult);
 			}else{
@@ -849,9 +877,11 @@ void pt_InterCodes(FILE *fp, InterCodes *codes){
 			fprintf(fp, "PARAM %s\n", g_cresult);
 			break;
 		case READ:
+			dealPtr(0, addflg1, g_cresult);
 			fprintf(fp, "READ %s\n", g_cresult);
 			break;
 		case WRITE:
+			dealPtr(0, addflg1, g_cresult);
 			fprintf(fp, "WRITE %s\n", g_cresult);
 			break;
 		default: 
@@ -859,6 +889,19 @@ void pt_InterCodes(FILE *fp, InterCodes *codes){
 			break;
 	}
 	//printf("%s\n",g_cresult);
+}
+
+void dealPtr(int addflg1, int addflg2, char *dst){
+	if(dst[0]=='#' || addflg1==addflg2)
+		return;
+	if(addflg1){
+		//dst need changed to address
+		sprintf(g_copy, "&%s", dst);
+		strcpy(dst, g_copy);
+	}else{
+		sprintf(g_copy, "*%s", dst);
+		strcpy(dst, g_copy);
+	}
 }
 
 void pt_Operand(Operand *op, char *dst){
@@ -886,3 +929,197 @@ void pt_Operand(Operand *op, char *dst){
 				 break;
 	}
 }
+
+/*
+below part is to optimize intercodes
+*/
+
+InterCodes *getBlockHead(InterCodes *codes);
+InterCodes *getBlockTail(InterCodes *codes);
+int if_BlockTail(InterCodes *codes);
+int if_ConstValue(Operand *op, int value);
+void BlockOptimize(InterCodes *head, InterCodes *tail);
+void OperandReplace(Operand *replace, Operand *t0, Operand* dst1, Operand *dst2, Operand *dst3);
+/*optimize funciton*/
+void OptimizeCodes(){
+	//block head
+	InterCodes *codes1 = getBlockHead(g_CodesHead);
+	InterCodes *codes2 = getBlockTail(codes1);
+	while(codes1!=NULL){
+		BlockOptimize(codes1, codes2);
+		codes1 = getBlockHead(codes2);
+		codes2 = getBlockTail(codes1);
+	}
+	return;
+}
+
+void BlockOptimize(InterCodes *head, InterCodes *tail){
+	myassert(head!=NULL);
+	InterCodes *cur = head;
+	Operand *replace = NULL;// for replace some variable
+	while(cur!=tail){
+		int kind = cur->code.kind;
+		Operand *op1 = &(cur->code.op1);
+		Operand *op2 = &(cur->code.op2);
+		Operand *left = &(cur->code.result);
+		/*t0 must be a temp variable
+		otherwise block must be more strict*/
+		if(left->kind!=TEMP && left->kind!=T_ADDRESS){
+			cur = cur->next;
+			continue;
+		}
+		InterCodes *nxt = cur->next;
+		/*t0 = t1 binop t2*/
+		if(kind==ADD || kind==SUB || kind==MUL || kind==DIV_L3)
+		{//find case to delete t0
+			int kind1 = op1->kind;
+			int kind2 = op2->kind;
+			int zeroflg1 = if_ConstValue(op1, 0);
+			int zeroflg2 = if_ConstValue(op2, 0);
+			int oneflg1 = if_ConstValue(op1, 1);
+			int oneflg2 = if_ConstValue(op2, 1);
+			if(kind1==CONSTANT && kind2==CONSTANT)
+			{//like t0 = #2 binop #4
+				if(kind==ADD)
+				{
+					replace = newOperand(CONSTANT, op1->u.value + op2->u.value, NULL, NULL);
+				}
+				else if(kind==SUB) 
+				{
+					replace = newOperand(CONSTANT, op1->u.value - op2->u.value, NULL, NULL);
+				}
+				else if(kind==MUL) 
+				{
+					replace = newOperand(CONSTANT, op1->u.value * op2->u.value, NULL, NULL);
+				}
+				else if(kind==DIV_L3) 
+				{
+					//m1.cmm has case x/0
+					int tmp=0;
+					if(op2->u.value==0)
+						tmp = 0;
+					else 
+						tmp = op1->u.value / op2->u.value;
+					replace = newOperand(CONSTANT, tmp, NULL, NULL);
+				}
+			}
+			else if(kind==ADD && zeroflg1)
+			{//0+a
+				replace = newOperand(op2->kind, op2->u.value, op2->type, op2->arrs);
+			}
+			else if((kind==SUB||kind==ADD) && zeroflg2)
+			{//a-0 || a+0
+				replace = newOperand(op1->kind, op1->u.value, op1->type, op1->arrs);
+			}
+			else if(kind==MUL && oneflg1)
+			{//1*a
+				replace = newOperand(op2->kind, op2->u.value, op2->type, op2->arrs);
+			}
+			else if((kind==MUL||kind==DIV_L3) && oneflg2)
+			{//a*1 || a/1
+				replace = newOperand(op1->kind, op1->u.value, op1->type, op1->arrs);
+			}
+		}
+		/*else if((kind==ASSIGN || kind==ADD_ASSIGN) && (op1->kind!=VARIABLE && op1->kind!=V_ADDRESS))
+		{//merge assign expression
+			nxt = cur->next;
+			while(nxt!=tail){
+				if(nxt->code.kind==ASSIGN || nxt->code.kind==ADD_ASSIGN)
+				{
+					if(nxt->code.result.kind==left->kind && nxt->code.result.u.value==left->u.value)
+					{
+						break;
+					}
+				}
+				nxt = nxt->next;
+			}
+			//while all end
+			if(nxt==tail){
+				replace = newOperand(op1->kind, op1->u.value, op1->type, op1->arrs);
+			}
+		}*/
+		//now replace
+		nxt = cur->next;
+		if(replace != NULL){
+			while(nxt != tail){
+				OperandReplace(replace, left, &(nxt->code.result), &(nxt->code.op1), &(nxt->code.op2));
+				nxt = nxt->next;	
+			}
+			delCodes(cur);
+			free(replace);
+			replace = NULL;
+		}
+		cur = cur->next;
+	}
+	return;
+}
+
+/*if t0==dst, replace src*/
+void OperandReplace(Operand *replace, Operand *t0, Operand* dst1, Operand *dst2, Operand *dst3){
+	myassert(t0->kind==TEMP || t0->kind==T_ADDRESS);
+	//printf("%d---%d\n",replace->kind, replace->u.value);
+	if(dst1->kind==t0->kind && dst1->u.value==t0->u.value){
+		*dst1 = *replace;
+	}
+	if(dst2->kind==t0->kind && dst2->u.value==t0->u.value){
+		*dst2 = *replace;
+	}
+	if(dst3->kind==t0->kind && dst3->u.value==t0->u.value){
+		*dst3 = *replace;
+	}
+}
+
+/*if op is CONSTANT and op->u.value==value,
+return 1, else return 0*/
+int if_ConstValue(Operand *op, int value){
+	if(op->kind==CONSTANT && op->u.value==value)
+		return 1;
+	else return 0;
+}
+/*codes maybe NULL
+return: 1 is tail, 0 not tail*/
+int if_BlockTail(InterCodes *codes){
+	//myassert(codes!=NULL);
+	if(codes==NULL) 
+		return 1;
+	switch(codes->code.kind){
+		//case LABEL_DEF:
+		//case JMP:
+		/*case JL:
+		case JG:
+		case JLE:
+		case JGE:
+		case JE:
+		case JNE:*/
+		case FUN:
+			return 1;
+		default:
+			return 0;
+	}
+}
+
+/*get the head of the next block
+Args: 
+return: maybe NULL*/
+InterCodes *getBlockHead(InterCodes *codes){
+	//myassert(codes!=NULL);
+	while(codes!=NULL){
+		if(if_BlockTail(codes)==0)
+			return codes;
+		codes = codes->next;
+	}
+	return codes;
+}
+
+/*get the tail of the next block
+return: may be NULL*/
+InterCodes *getBlockTail(InterCodes *codes){
+	while(codes!=NULL){
+		if(if_BlockTail(codes)==1)
+			return codes;
+		codes = codes->next;
+	}
+	return codes;
+}
+
+

@@ -1,59 +1,47 @@
-import json;
-import re;
+import json
+from os import system
+from itertools import count
 
 def msg(s):
     print('\033[1m\033[91m' + s + '\033[0m\033[0m');
+def err(data_in, s):
+    msg("Wrong on input " + str(data_in) + "\n" + s)
+    exit(1)
 
-f_out = "./workdir/a.out";
+f_ir   = "./workdir/a.ir";
 f_json = "./workdir/a.json";
-pattern = re.compile(r"Error type (\d+) at Line (\d+): .*\.");
+program = "./irsim"
+irsim_in  = './workdir/irsim_in'
+irsim_out = './workdir/irsim_out'
 
-ref_list = json.load(open(f_json));
-out = open(f_out);
+for data_in, data_out, ret_val in json.load(open(f_json)):
+    with open(irsim_in, 'w') as to_irsim_w:
+        for i in data_in:
+            to_irsim_w.write(str(i) + '\n')
 
-require = {};
-resolve = {};
-allow = {};
-
-if "require" in ref_list:
-    for err in ref_list["require"]:
-        require[err] = 0;
-        for x, y in ref_list["require"][err]:
-            if (x, y) in resolve:
-                resolve[(x, y)].append(err);
+    ret = system("%s %s < %s > %s 2>/dev/null"%(program, f_ir , irsim_in , irsim_out))
+    # Suppose irsim is compiled by run.sh
+    if ret != 0:
+        with open(irsim_out, 'r') as from_irsim_r:
+            err(data_in,
+                "runtime error occured when running your IR code\n"
+                + from_irsim_r.read().splitlines()[-1]);
+    with open(irsim_out, 'r') as from_irsim_r:
+        from_irsim_r.readline()
+        # Filter out the first line "load ./workdir/a.ir"
+        try:
+            for idx, expect, user_out in zip(count(1), data_out, from_irsim_r):
+                user_out = int(user_out)
+                if expect != user_out:
+                    err(data_in, "Output mismatch! expected %d, found %d at line %d" % (expect, user_out, idx));
             else:
-                resolve[(x, y)] = [err];
+                if "ret with 0, reason 0\n" != from_irsim_r.readline():
+                    err(data_in, "Output mismatch!(you output more than supposed?)")
+                with open("./workdir/count", "r+") as f:
+                    cnt = int(from_irsim_r.readline()) + int(f.read())
+                    f.seek(0)
+                    f.write(str(cnt))
+        except ValueError:
+            err(data_in, "Output mismatch!(you output less than supposed?)")
 
-if "allow" in ref_list:
-    for x, y in ref_list["allow"]:
-        allow[(x, y)] = True;
-
-while True:
-    l = out.readline();
-    if(l == ""):
-        break;
-
-    m = pattern.match(l);
-    if(not m):
-        msg("Wrong output format!")
-        exit(1);
-    x, y = m.groups();
-    pos = (int(x), int(y))
-
-    if pos in resolve:
-        for err in resolve[pos]:
-            require[err] = 1;
-    elif pos in allow:
-        pass;
-    else:
-        msg("Not allowed error %d at line %d.\nPlease add it to corresponding .json file if you think your output is reasonable." % (pos));
-        exit(1);
-
-for err in require:
-    if require[err] == 0:
-        msg("You should output at least one of the following erros:");
-        for x, y in ref_list["require"][err]:
-            msg("- Error %d at line %d." % (int(x), int(y)));
-        exit(1);
-
-exit(0);
+exit(0)
