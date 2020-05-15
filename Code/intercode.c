@@ -939,7 +939,7 @@ InterCodes *getBlockTail(InterCodes *codes);
 int if_BlockTail(InterCodes *codes);
 int if_ConstValue(Operand *op, int value);
 void BlockOptimize(InterCodes *head, InterCodes *tail);
-void OperandReplace(Operand *replace, Operand *t0, Operand* dst1, Operand *dst2, Operand *dst3);
+int OperandReplace(Operand *replace, Operand *t0, Operand* dst1, Operand *dst2, Operand *dst3);
 /*optimize funciton*/
 void OptimizeCodes(){
 	//block head
@@ -957,7 +957,7 @@ void BlockOptimize(InterCodes *head, InterCodes *tail){
 	myassert(head!=NULL);
 	InterCodes *cur = head;
 	Operand *replace = NULL;// for replace some variable
-	while(cur!=tail){
+	while(cur->next!=tail){
 		int kind = cur->code.kind;
 		Operand *op1 = &(cur->code.op1);
 		Operand *op2 = &(cur->code.op2);
@@ -1019,35 +1019,44 @@ void BlockOptimize(InterCodes *head, InterCodes *tail){
 			{//a*1 || a/1
 				replace = newOperand(op1->kind, op1->u.value, op1->type, op1->arrs);
 			}
+			//now replace
+			nxt = cur->next;
+			if(replace != NULL){
+				while(nxt != tail){
+					OperandReplace(replace, left, &(nxt->code.result), &(nxt->code.op1), &(nxt->code.op2));
+					nxt = nxt->next;	
+				}
+				delCodes(cur);
+				free(replace);
+				replace = NULL;
+			}
 		}
-		/*else if((kind==ASSIGN || kind==ADD_ASSIGN) && (op1->kind!=VARIABLE && op1->kind!=V_ADDRESS))
+		else if(kind==ASSIGN || kind==ADD_ASSIGN)
 		{//merge assign expression
 			nxt = cur->next;
-			while(nxt!=tail){
-				if(nxt->code.kind==ASSIGN || nxt->code.kind==ADD_ASSIGN)
-				{
-					if(nxt->code.result.kind==left->kind && nxt->code.result.u.value==left->u.value)
-					{
-						break;
-					}
-				}
-				nxt = nxt->next;
+			int replaceflg = 1;
+			if(if_Operand_Address(left) && kind==ASSIGN)
+			{//like *t0 = t, *t0=*t
+				replaceflg = 0;
 			}
+			if(op1->kind==VARIABLE || op1->kind==V_ADDRESS)
+			{//t = v, t = &v, in the next next codes, t may appear
+				replaceflg = 0;
+			}
+			if(nxt->code.result.kind==left->kind && nxt->code.result.u.value==left->u.value)
+			{// t0 = ...
+				replaceflg = 0;
+			}
+			nxt = cur->next;
 			//while all end
-			if(nxt==tail){
+			if(replaceflg){
 				replace = newOperand(op1->kind, op1->u.value, op1->type, op1->arrs);
+				int i = OperandReplace(replace, left, &(nxt->code.result), &(nxt->code.op1), &(nxt->code.op2));
+				if(i==0)
+					delCodes(cur);
+				free(replace);
+				replace = NULL;
 			}
-		}*/
-		//now replace
-		nxt = cur->next;
-		if(replace != NULL){
-			while(nxt != tail){
-				OperandReplace(replace, left, &(nxt->code.result), &(nxt->code.op1), &(nxt->code.op2));
-				nxt = nxt->next;	
-			}
-			delCodes(cur);
-			free(replace);
-			replace = NULL;
 		}
 		cur = cur->next;
 	}
@@ -1055,22 +1064,28 @@ void BlockOptimize(InterCodes *head, InterCodes *tail){
 }
 
 /*if t0==dst, replace src*/
-void OperandReplace(Operand *replace, Operand *t0, Operand* dst1, Operand *dst2, Operand *dst3){
+int OperandReplace(Operand *replace, Operand *t0, Operand* dst1, Operand *dst2, Operand *dst3){
+	if(t0==NULL) return 1;
 	myassert(t0->kind==TEMP || t0->kind==T_ADDRESS);
 	//printf("%d---%d\n",replace->kind, replace->u.value);
+	int ret = 1;
 	if(dst1->kind==t0->kind && dst1->u.value==t0->u.value){
 		*dst1 = *replace;
+		ret = 0;
 	}
 	if(dst2->kind==t0->kind && dst2->u.value==t0->u.value){
 		*dst2 = *replace;
+		ret = 0;
 	}
 	if(dst3->kind==t0->kind && dst3->u.value==t0->u.value){
 		*dst3 = *replace;
+		ret = 0;
 	}
+	return ret;
 }
 
 /*if op is CONSTANT and op->u.value==value,
-return 1, else return 0*/
+  return 1, else return 0*/
 int if_ConstValue(Operand *op, int value){
 	if(op->kind==CONSTANT && op->u.value==value)
 		return 1;
@@ -1086,11 +1101,11 @@ int if_BlockTail(InterCodes *codes){
 		//case LABEL_DEF:
 		//case JMP:
 		/*case JL:
-		case JG:
-		case JLE:
-		case JGE:
-		case JE:
-		case JNE:*/
+		  case JG:
+		  case JLE:
+		  case JGE:
+		  case JE:
+		  case JNE:*/
 		case FUN:
 			return 1;
 		default:
