@@ -30,7 +30,7 @@ Operand *assign_Var(Operand *left, Operand *right){
 	int addflg2 = if_Operand_Address(right);
 	/*four situations for (addflg1, addflg2):
 	**(1,1), (1,0), (0,1), (0,0)
-	**(1,1) for case x=a[i]=b[j]=y or a[]=b[]
+	**(1,1) for case x=a[i]=b[j]=y or a[]=b[] #now no this case
 	**(1,0) is the case a[i] = x
 	**(0,1) is because x = a[i] = b[j]
 	*/
@@ -38,7 +38,7 @@ Operand *assign_Var(Operand *left, Operand *right){
 	if(addflg1 && addflg2){//(1,1)
 		/*two address assign*/
 		Operand *consop = newOperand(CONSTANT, 4, NULL, NULL);
-		myassert(left->arrs == right->arrs);
+		//myassert(ArrNodes_cmp(left->arrs, right->arrs)==0);
 		/*when x=a[i]=b[j]=y, Exp of a and Exp of b 
 		** will return address, and only needs assign one byte
 		*/
@@ -64,7 +64,16 @@ Operand *assign_Var(Operand *left, Operand *right){
 		} 
 		free(t1op); free(t2op); free(consop);
 	}
-	return left;
+	/*change (1,0) into (0,0)
+	otherwise (a[i]=x)+(b[i]=y) will error*/
+	Operand *ret = left;
+	if(addflg1 && addflg2==0){
+		//printf("1\n");
+		int t1 = newTemp();
+		ret = newOperand(TEMP, t1, NULL, NULL);
+		newInterCodes(ASSIGN, ret, left, nullop);
+	}
+	return ret;
 }
 
 /*Description: insert variable into table
@@ -180,7 +189,9 @@ Operand *translate_Exp(node_t *cur, int place){
 	if(child->syntype==myINT)
 	{
 		pf3(ExpINT);
+		//printf("%d\n",cur->lineno);
 		ret = newOperand(CONSTANT, child->iVal, NULL, NULL);
+		//printf("2\n");
 	}
 	else if(child->syntype == myID)
 	{
@@ -231,7 +242,6 @@ Operand *translate_Exp(node_t *cur, int place){
 		}
 		else
 		{//ID LP Args RP
-			pf3(ExpID3);
 			if(strcmp(child->cVal, "write")==0)
 			{
 				Operand *result = translate_Exp(cbro->bro->child, place);
@@ -305,9 +315,8 @@ Operand *translate_Exp(node_t *cur, int place){
 			int t1 = newTemp();
 			Operand *result = translate_Exp(child, place);
 			Operand *op1 = translate_Exp(cbro->bro, t1);
-			assign_Var(result, op1);
+			ret = assign_Var(result, op1);
 			free(op1);
-			ret = result;
 		}
 		else if(cbro->syntype==myLB||cbro->syntype==myDOT)
 		{
@@ -499,10 +508,6 @@ void translate_Stmt(node_t *cur){
 	node_t *child = cur->child;
 	node_t *gchild = child->child;
 	if(child->syntype==myExp){
-		if(gchild->syntype!=myExp && gchild->syntype!=myID)
-			return;
-		else if(gchild->bro->syntype!=myASSIGNOP && gchild->bro->syntype!=myLP)
-			return;
 		translate_Exp(child, newTemp());
 	}
 	else if(child->syntype==myCompSt){
@@ -510,9 +515,11 @@ void translate_Stmt(node_t *cur){
 	}
 	else if(child->syntype==myRETURN){
 		int t1 = newTemp();
+		//printf("1\n");
 		Operand *op1 = translate_Exp(child->bro, t1);
 		newInterCodes(RET, op1, nullop, nullop);
 		free(op1);
+		//printf("2\n");
 	}
 	else if(child->syntype==myIF){
 		if(child->bro->bro->bro->bro->bro==NULL){
@@ -616,7 +623,10 @@ void translate_Dec(node_t *cur){
 	Operand *op1 = translate_VarDec(child);	
 	if(op1->arrs!=NULL || op1->type!=NULL){
 		int size;
-		if(op1->arrs==NULL) size = getTypeSize(op1->type);
+		if(op1->arrs==NULL) {
+			size = getTypeSize(op1->type);
+			//printf("%d\n",size);
+		}
 		else size = op1->arrs->arr.asize * op1->arrs->arr.usize;
 
 		Operand *consop = newOperand(CONSTANT, size, NULL, NULL);
@@ -644,6 +654,7 @@ void translate_StmtList(node_t *cur){
 	pf3(StmtList);
 	node_t *child = cur->child;
 	translate_Stmt(child);
+	//pf3(StmtListend);
 	if(child->bro!=NULL){
 		translate_StmtList(child->bro);
 	}
@@ -704,8 +715,10 @@ void translate_root(char *filename){
 	nullop = newOperand(KIND, KIND, NULL, NULL);
 	if(root->child!=NULL)
 		translate_ExtDefList(root->child);
+	//pf3(sdfsd);
 	InterCodes_DFS(filename);
 	free(nullop);
+	//pf3(3);
 }
 
 void translate_ExtDef(node_t *cur);
@@ -733,12 +746,15 @@ void pt_InterCodes(FILE *fp, InterCodes *codes);
 void InterCodes_DFS(char *filename){
 	FILE *fp = fopen(filename, "w");
 	InterCodes *codes = g_CodesHead;
+	int i = 0;
 	while(codes!=NULL){
-		//printf("1\n");
+		//printf("%d\n",i++);
 		pt_InterCodes(fp, codes);
 		codes = codes->next;
 	}
+	//pf3(1);
 	fclose(fp);
+	//pf3(2);
 }
 
 void pt_Operand(Operand *op, char *dst);
@@ -778,6 +794,10 @@ void pt_InterCodes(FILE *fp, InterCodes *codes){
 		case MUL:
 		case DIV_L3:
 			//myassert(addflg1==addflg2 && addflg2==addflg3);
+			/*if(addflg1==0){
+				sprintf(g_copy, "&%s", g_cop1);
+				strcpy(g_cop1, g_copy);
+			}*/
 			fprintf(fp, "%s := %s %s %s\n", g_cresult, g_cop1, g_SignName[codes->code.kind], g_cop2);
 			break;
 		case LABEL_DEF:
@@ -827,9 +847,11 @@ void pt_InterCodes(FILE *fp, InterCodes *codes){
 		case WRITE:
 			fprintf(fp, "WRITE %s\n", g_cresult);
 			break;
-		default: myassert(0);
-				 break;
+		default: 
+			myassert(0);
+			break;
 	}
+	//printf("%s\n",g_cresult);
 }
 
 void pt_Operand(Operand *op, char *dst){

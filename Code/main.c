@@ -23,8 +23,8 @@ int main(int argc, char** argv) {
 	//pTree();
 	//printf("%s\n",argv[2]);
 	DFS();
-	//printf("%s\n",argv[2]);
 	translate_root(argv[2]);
+	//printf("x\n");
 	return 0;
 }
 

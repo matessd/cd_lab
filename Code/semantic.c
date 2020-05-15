@@ -7,8 +7,24 @@ sym_t *curEnv=NULL;
 sym_t *funEnv=NULL, *funDecEnv=NULL;
 void subTree_DFS(node_t *cur, int mode);
 void subTree_Exp_DFS(node_t *cur);
+node_t *Args_DFS(node_t *cur);
 node_t *Def_DFS(node_t *cur, int mode);
 node_t *StructSpecifier_DFS(node_t *cur);
+
+int ArrNodes_cmp(ArrNodes *arrs1, ArrNodes *arrs2){
+	if(arrs1==arrs2) return 0;
+	if(arrs1==NULL && arrs1!=arrs2)
+		return 1;
+	myassert(arrs1!=NULL && arrs2!=NULL);
+	if(arrs1->arr.asize!=arrs2->arr.asize
+		|| arrs1->arr.usize!=arrs2->arr.usize){
+		return 1;
+	}else {
+		if(ArrNodes_cmp(arrs1->next, arrs2->next)!=0)
+			return 1;
+	}
+	return 0;
+}
 
 ArrNodes* newArrNodes(int asize, int usize){
 	ArrNodes *ret = malloc(sizeof(ArrNodes));
@@ -48,8 +64,12 @@ int getTypeSize(node_t *type){
 	myassert(type->val_type==STR_DEF);
 	node_t *member = type->member;
 	int size = 0;
+	int typesize = 0;
 	while(member!=NULL){
-		size += getTypeSize(member->detail);
+		typesize = getTypeSize(member->detail);
+		if(member->arrs!=NULL)
+			typesize *= member->arrs->arr.asize;
+		size += typesize;
 		member = member->member;
 	}
 	return size;
@@ -376,23 +396,33 @@ int Type_cmp(node_t *p1, node_t *p2){
 }
 
 int Args_cmp(node_t *p1, node_t *p2){
-	if(p1==NULL || p2==NULL) return 1;
-	//myassert(p1->val_type==STR_VAR && p2->val_type==STR_VAR);
+	myassert(p1!=NULL && p2!=NULL);
+	//if(p1==NULL || p2==NULL) return 1;
 	if(p1==p2) return 0;//same structure name
 	while(p1->member!=NULL && p2->member!=NULL){
+		//printf("%s---%d\n",p1->cVal,p2->vis);
 		if(Type_cmp(p1,p2)!=0)
 			return 1;
 		p1 = p1->member;
 		p2 = p2->member;
 	}
+	//printf("%s---%d\n",p1->cVal,p2->vis);
+	if(Type_cmp(p1,p2)!=0)
+			return 1;
 	if(p1->member==NULL&&p2->member==NULL){
 		return 0;
 	}else{
+		/*myassert(p2->member == NULL);
+		printf("%s---%d\n",p1->member->cVal,p1->member->lineno);
+		node_t *pp = p1->member->member;
+		int i = 0;
+		while(pp!=NULL){
+			//printf("%s---%d\n",pp->cVal,pp->lineno);
+			pp = pp->member;
+		}
+		myassert(p1->member == NULL);*/
 		return 1;
 	}
-	if(Type_cmp(p1,p2)!=0)
-			return 1;
-	return 0;
  }
 
 enum{LOGIC_OP, ASSIGN_OP, ARITH_OP};
@@ -518,19 +548,21 @@ node_t *DecList_DFS(node_t *cur, sym_t *type, int val_type, int mode){
 	if(child->bro!=NULL){//COMMA
 		p1 = Dec_DFS(child, type, val_type, mode);//Dec
 		p2 =  DecList_DFS(child->bro->bro, type, val_type, mode);
-		node_t *ptmp = find_member_tail(p1);
-		myassert(ptmp!=NULL);
-		ptmp->member = p2;
+		if(mode==STR_MODE){
+			node_t *ptmp = find_member_tail(p1);
+			myassert(ptmp!=NULL);
+			ptmp->member = p2;
+		}
 	}else{
 		p1 = Dec_DFS(child, type, val_type, mode);
 	}
 	return p1;
 }
 
+
 node_t *Def_DFS(node_t *cur, int mode){
 	//printf("1\n");
 	node_t *child = cur->child;//Specifier
-	//printf("%s1\n",child->child->cVal);
 	node_t *gchild = child->child;//TYPE or StructSpecifier
 	int val_type;
 	node_t *p1=NULL;
@@ -538,9 +570,7 @@ node_t *Def_DFS(node_t *cur, int mode){
 		//INT or FLOAT
 		//printf("1\n");
 		val_type = (strcmp(gchild->cVal,"int")==0)?INT_TYPE:FLOAT_TYPE;
-		//printf("Dec1\n");
         p1 = DecList_DFS(child->bro, NULL, val_type, mode);
-		//printf("Dec\n");
 		return p1;
 	}else{
 		//TODO
@@ -556,7 +586,6 @@ node_t *Def_DFS(node_t *cur, int mode){
 node_t *DefList_DFS(node_t *cur, int mode){
 	//this function is for structure, and must return strvar list,
 	//never return strdef
-	//printf("1\n");
 	node_t *child = cur->child;
 	node_t *p1, *p2;
 	if(child->bro==NULL){//Def
@@ -568,13 +597,12 @@ node_t *DefList_DFS(node_t *cur, int mode){
 	//printf("def\n");
     p1 = Def_DFS(child, mode);
 	p2 = DefList_DFS(child->bro, mode);
-	//myassert(p1!=NULL && p2!=NULL);
-	//Def may return a member list
-	if(p1!=NULL){
+	myassert(p1!=NULL && p2!=NULL);
+	if(mode==STR_MODE){
+		//Def may return a member list
 		node_t *ptmp = find_member_tail(p1);
 		ptmp->member = p2;
 	}
-	//printf("3\n");
 	return p1;
 }
 
@@ -675,7 +703,6 @@ node_t *ParamDec_DFS(node_t *cur){
 	child->bro->argflg = 1;
 	node_t *type = NULL;
 	VarDec_DFS(child->bro, child->bro);
-	//printf("2\n");
 	if(gchild->syntype==myTYPE){
 		//INT or FLOAT
 		child->bro->id_type = VAR_TYPE;
@@ -686,8 +713,9 @@ node_t *ParamDec_DFS(node_t *cur){
 		//StructSpecifier
 		type = StructSpecifier_DFS(gchild);
 		//printf("3\n");
-		if(type==NULL)
+		if(type==NULL){
 			return NULL;
+		}
 		child->bro->id_type = STR_TYPE;
 		child->bro->val_type = STR_VAR;
 		child->bro->detail = type;
@@ -702,11 +730,12 @@ node_t *VarList_DFS(node_t *cur){
 	node_t *child = cur->child;//ParamDec
 	node_t *p1=NULL, *p2=NULL;
 	p1 = ParamDec_DFS(child);
-	myassert(p1!=NULL);
+	myassert(p1!=NULL && p1->member==NULL);
+	//myassert(p1->member == NULL);
 	if(child->bro != NULL)
 		p2 = VarList_DFS(child->bro->bro);	
-	node_t *ptmp = find_member_tail(p1);
-	ptmp->member = p2;
+	//node_t *ptmp = find_member_tail(p1);
+	p1->member = p2;
 	return p1; 
 }
 
@@ -824,6 +853,9 @@ void Exp_DFS(node_t *cur){
 					errflg = 1;
 				}
 			}else if(child->bro->bro->syntype==myArgs){
+				//printf("Funname: %s--%d\n",p->cVal,child->bro->bro->lineno);
+				Args_DFS(child->bro->bro);
+				//myassert(child->bro->bro->child!=NULL);
 				if(Args_cmp(p->member, child->bro->bro->child)!=0){
 					pt_semantic_error(9, child->lineno, child->cVal);
 					errflg = 1;
@@ -923,10 +955,12 @@ void Exp_DFS(node_t *cur){
 node_t *Args_DFS(node_t *cur){
 	node_t *child = cur->child;
 	node_t *p1 = NULL, *p2=NULL;
+	subTree_Exp_DFS(child);
 	p1 = child;//Exp
 	if(child->bro!=NULL)
 		p2 = Args_DFS(child->bro->bro);
 	p1->member = p2;
+	//printf("%d\n", p1->val_type);
 	/*p1->id_type = STR_TYPE;
 	p1->val_type = STR_VAR;
 	p1->arr_dim = 0;*/
@@ -936,8 +970,6 @@ node_t *Args_DFS(node_t *cur){
 void RETURN_DFS(node_t *cur){
 	node_t *bro = cur->bro;
 	sym_t *psym = funEnv;
-	//printf("%s:%d\n",psym->cVal,psym->arr_dim);
-	//printf("%s:%d\n",bro->cVal,bro->arr_dim);
     if(Type_cmp(psym, bro)!=0){
 		pt_semantic_error(8, cur->lineno, NULL);
 	}	
@@ -947,12 +979,11 @@ void subTree_Exp_DFS(node_t *cur){
 	//myassert(cur->syntype==myExp);
 	if(cur->child!=NULL)
 		subTree_Exp_DFS(cur->child);
-	if(cur->syntype==myExp){
-		Exp_DFS(cur);
-		cur->vis = 1;
-	}
 	if(cur->bro!=NULL)
 		subTree_Exp_DFS(cur->bro);
+	if(cur->syntype==myExp && cur->vis==0){
+		Exp_DFS(cur);
+	}
 }
 
 extern VarNode *g_VarTable;
@@ -988,6 +1019,12 @@ void subTree_DFS(node_t* cur, int mode){
 			subTree_DFS(cur->child, 0);
 		}
 	}
+	//traverse brother node
+	if(cur->bro!=NULL){
+		if(cur->syntype==myFunDec)
+			subTree_DFS(cur->bro, 1);
+		else subTree_DFS(cur->bro, 0);
+	}
 	//printf("%s:2\n",mytname[cur->syntype]);
 	switch(cur->syntype){
 	  case myExp: 
@@ -998,19 +1035,10 @@ void subTree_DFS(node_t* cur, int mode){
 			RETURN_DFS(cur->child);
 		}
 		break;
-	  case myArgs: 
+	  /*case myArgs: 
 		Args_DFS(cur);
-		break;
-	  //case myDefList:
-	    //DefList_DFS(cur, VAR_MODE);	
-		//break;
+		break;*/
 	  default: break;
-	}
-	//traverse brother node
-	if(cur->bro!=NULL){
-		if(cur->syntype==myFunDec)
-			subTree_DFS(cur->bro, 1);
-		else subTree_DFS(cur->bro, 0);
 	}
 }
 
@@ -1021,9 +1049,11 @@ void deal_env_lab3(){
 	if(cur==NULL) return;
 	while(cur->nxt!=NULL){
 		sym_t *nxt = cur->nxt;
+		compute_ArrNodes_usize(cur->arrs, cur->detail);
 		VarTable_insert(cur->cVal, cur);
 		cur = nxt;
 	}
+	compute_ArrNodes_usize(cur->arrs, cur->detail);
 	VarTable_insert(cur->cVal, cur);
 }
 
