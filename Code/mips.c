@@ -17,15 +17,17 @@ write:\n\
  la $a0, _ret\n\
  syscall\n\
  move $v0, $0\n\
- jr $ra\n"
+ jr $ra\n\n"
 };
 int g_reg_using[8];//judge register $t0-$t7 is using
 RegInfo *g_reginfo[8];
 
 RegInfo *g_InfoHead=NULL, *g_InfoTail=NULL;
+int g_fp_offset=-8;//offset to $fp for var in funciton
+
 /*Description: insert reginfo into table
 */
-int InfoTable_insert(Operand *op, int offset){
+RegInfo *InfoTable_insert(Operand *op, int offset){
 	RegInfo *cur;
 	if(g_InfoHead==NULL){
 		myassert(g_InfoTail==NULL);
@@ -42,7 +44,7 @@ int InfoTable_insert(Operand *op, int offset){
 	cur->value = op->u.value;
 	cur->offset = offset;
 	cur->next = NULL;
-	return 0;
+	return cur;
 }
 
 /*
@@ -63,7 +65,7 @@ RegInfo *InfoTable_search(Operand *op){
 	return NULL;
 }
 
-void free_InfoTable(){
+void clear_InfoTable(){
 	RegInfo *cur = g_InfoHead;
 	while(cur!=NULL){
 		free(cur);
@@ -71,6 +73,7 @@ void free_InfoTable(){
 	}
 	g_InfoHead = NULL;
 	g_InfoTail = NULL;
+	g_fp_offset = -8;
 }
 
 //in intercode.c
@@ -96,6 +99,16 @@ void output_mips(char *filename){
 
 int get_reg(Operand *op){
 	/*get the number of reg t_i*/
+	int i=0;
+	for(i=0; i<8; i++){
+		if(g_reg_using[i]==0){
+			g_reg_using[i] = 1;
+		}
+	}
+	if(i==8){
+		myassert(0);
+		i = 0;
+	}
 	RegInfo *info = NULL;
 	if(op->kind==TEMP || op->kind==VARIABLE 
 		||op->kind==T_ADDRESS || op->kind==V_ADDRESS)
@@ -103,21 +116,16 @@ int get_reg(Operand *op){
 		info = InfoTable_search(op);
 		if(info == NULL)
 		{	
-			InfoTable_insert(op, info->offset);
+			g_fp_offset = g_fp_offset - 4;
+			info = InfoTable_insert(op, g_fp_offset);
+			fprintf(g_mips_fp, " addi $sp, $sp, -4\n");
 		}
 		else
 		{
-			
+			fprintf(g_mips_fp, " lw $t%d, %d($fp)\n",i,info->offset);	
 		}
 	}
-	for(int i=0; i<8; i++){
-		if(g_reg_using[i]==0){
-			g_reg_using[i] = 1;
-			g_reginfo[i] = info;
-			return i;
-		}
-	}
-	g_reginfo[0] = NULL;
+	g_reginfo[i] = info;
 	return 0;
 }
 
@@ -131,8 +139,10 @@ void reg_free(int reg_idx){
 void spill(int reg_idx){
 	/*sw value in reg_idx to memory*/	
 	RegInfo *info = g_reginfo[reg_idx];
+	fprintf(g_mips_fp, " sw $t%d, %d($fp)\n", reg_idx, info->offset);
 }
 
+#define FRAME_SIZE 8
 void trans_to_mips(InterCodes *codes){
 	/*translate intercodes to mips32 instructions*/
 	myassert(codes!=NULL);
@@ -152,23 +162,32 @@ void trans_to_mips(InterCodes *codes){
 			break;
 		case FUN:
 			fprintf(g_mips_fp, "%s:\n", left->u.cVal);
+			if(strcmp("main",left->u.cVal)==0){
+				fprintf(g_mips_fp, " move $fp, $sp\n subu $sp, $sp, %d\n", FRAME_SIZE);
+			}
+			break;
+		case RET:
+			rr = get_reg(left);
+			fprintf(g_mips_fp, " move $v0, $t%d\n jr $ra\n\n", rr);
+			reg_free(rr);
+			clear_InfoTable();
 			break;
 		case ASSIGN:
 			rr = get_reg(left); r1 = get_reg(op1);
 			if(addflg1 && addflg2){
 				myassert(0);
 				r2 = get_reg(op2);
-				fprintf(g_mips_fp, " lw $%d, 0($%d)\n", r2, r1);
-				fprintf(g_mips_fp, " sw $%d, 0($%d)\n", r2, rr);
+				fprintf(g_mips_fp, " lw $t%d, 0($t%d)\n", r2, r1);
+				fprintf(g_mips_fp, " sw $t%d, 0($t%d)\n", r2, rr);
 				spill(rr);
 				reg_free(r2);
 			}else if(addflg1){
-				fprintf(g_mips_fp, " sw $%d, 0($%d)\n", r1, rr);
+				fprintf(g_mips_fp, " sw $t%d, 0($t%d)\n", r1, rr);
 			}else if(addflg2){
-				fprintf(g_mips_fp, " lw $%d, 0($%d)\n", rr, r1);
+				fprintf(g_mips_fp, " lw $t%d, 0($t%d)\n", rr, r1);
 				spill(rr);
 			}else{
-				fprintf(g_mips_fp, " move $%d, $%d\n", rr, r1);
+				fprintf(g_mips_fp, " move $t%d, $t%d\n", rr, r1);
 				spill(rr);
 			}
 			reg_free(rr); reg_free(r1);
@@ -176,10 +195,17 @@ void trans_to_mips(InterCodes *codes){
 		case ADD_ASSIGN:
 			myassert(0);
 			break;
+		case DEC_L3:
+			myassert(0);
+			break;
 		case ADD:
 		case SUB:
 		case MUL:
 		case DIV_L3:
+			rr=get_reg(left); r1=get_reg(op1); r2=get_reg(op2);
+			fprintf(g_mips_fp, " %s $t%d, $t%d, $t%d\n", g_arithIns[codes->code.kind], rr, r1, r2);
+			spill(rr);
+			reg_free(rr); reg_free(r1); reg_free(r2);
 			break;
 		case JL:
 		case JG:
@@ -187,20 +213,45 @@ void trans_to_mips(InterCodes *codes){
 		case JGE:
 		case JE:
 		case JNE:
-			break;
-		case DEC_L3:
-			break;
-		case RET:
+			r1=get_reg(op1); r1=get_reg(op2);
+			fprintf(g_mips_fp, " %s $t%d, $t%d, label%d\n", g_arithIns[codes->code.kind], r1, r2, left->u.value);
+			reg_free(r1); reg_free(r2);
 			break;
 		case CALL:
+		case READ:
+		case WRITE:
+			if(codes->code.kind==WRITE){
+				rr = get_reg(left);
+				fprintf(g_mips_fp, " move $a0, $t%d\n",rr);
+				reg_free(rr);
+			}
+			fprintf(g_mips_fp, " subu $sp, $sp, %d\n",FRAME_SIZE);
+			fprintf(g_mips_fp, " sw $ra, %d($sp)\n",FRAME_SIZE-4);
+			fprintf(g_mips_fp, " sw $fp, %d($sp)\n",FRAME_SIZE-8);
+			fprintf(g_mips_fp, " addi $fp, $sp, %d\n",FRAME_SIZE);
+
+			if(codes->code.kind==READ){
+				fprintf(g_mips_fp, " jal read\n");
+			}else if(codes->code.kind==WRITE){
+				fprintf(g_mips_fp, " jal write\n");
+			}else{
+				fprintf(g_mips_fp, " jal %s\n", op1->u.cVal);
+			}
+
+			fprintf(g_mips_fp, " move $sp, $fp\n");
+			fprintf(g_mips_fp, " lw $ra, -4($fp)\n");
+			fprintf(g_mips_fp, " lw $fp, -8($fp)\n");
+			if(codes->code.kind != WRITE){
+				rr = get_reg(left);
+				fprintf(g_mips_fp, " move $t%d, $v0\n", rr);
+				spill(rr);
+				reg_free(rr);
+			}
 			break;
 		case ARG:
+			myassert(0);
 			break;
 		case PARAM:
-			break;
-		case READ:
-			break;
-		case WRITE:
 			break;
 		default: 
 			myassert(0);

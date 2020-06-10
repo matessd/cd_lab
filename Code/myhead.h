@@ -169,3 +169,7 @@ struct RegInfo{
 	struct RegInfo *next;
 };
 typedef struct RegInfo RegInfo;
+static const char *const g_arithIns[] ={
+	"=", "add", "sub", "mul", "div",
+	"label", "to", "blt", "bgt", "ble", "bge", "beq", "bne"
+};
