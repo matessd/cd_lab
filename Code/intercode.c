@@ -757,7 +757,7 @@ void translate_root(char *filename){
 		translate_ExtDefList(root->child);
 	free_VarTable();
 	//OptimizeCodes();
-	InterCodes_DFS(filename);
+	//InterCodes_DFS(filename);
 
 	//L4
 	output_mips(filename);

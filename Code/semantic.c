@@ -151,6 +151,7 @@ void DFS(){
 	arg->detail = arg->member = NULL;
 	arg->id_type = VAR_TYPE;
 	arg->val_type = INT_TYPE;
+	arg->arr_dim = 0;
 
 	p2->member = arg;
 	insert_fun_symbol(-1, p2, &funEnv);

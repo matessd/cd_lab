@@ -54,9 +54,9 @@ else
     PREFIX="";
 fi;
 
-for fcmm in ./tests/2020-Advanced-A-117.cmm; do
-  cp $fcmm ./workdir/a.cmm
-  cp ${fcmm%.cmm}.json ./workdir/a.json
+for fcmm in ./tests/2018-A-5*.cmm; do
+  #cp $fcmm ./workdir/a.cmm
+  #cp ${fcmm%.cmm}.json ./workdir/a.json
 
   if $PREFIX $RUN ./workdir/a.cmm  ./workdir/a.s 2>&1; then
       true; #do nothing
@@ -65,7 +65,7 @@ for fcmm in ./tests/2020-Advanced-A-117.cmm; do
       continue
   fi;
 
-  if python3 ./check.py; then
+  if $PREFIX python3 ./check.py; then
     echo test [$(basename $fcmm)] matched
   else
     report_error "mismatch or TLE"
