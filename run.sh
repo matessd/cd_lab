@@ -7,9 +7,6 @@ NORMAL=$(tput sgr0)
 
 cd $(dirname $0)
 
-#echo "Making(Updating) irsim"
-#make -C irsim
-
 if ! [ -z $1 ]
 then
   rm ./workdir/saved_binary.sh 2> /dev/null
@@ -57,12 +54,11 @@ else
     PREFIX="";
 fi;
 
-echo 0 > workdir/count
 for fcmm in ./tests/*.cmm; do
   cp $fcmm ./workdir/a.cmm
   cp ${fcmm%.cmm}.json ./workdir/a.json
 
-  if $PREFIX $RUN ./workdir/a.cmm  ./workdir/a.ir 2>&1; then
+  if $PREFIX $RUN ./workdir/a.cmm  ./workdir/a.s 2>&1; then
       true; #do nothing
   else
       report_error "RE or TLE"
@@ -76,7 +72,3 @@ for fcmm in ./tests/*.cmm; do
     continue
   fi
 done
-
-echo -n "irsim executes about "
-cat workdir/count
-echo " instructions"

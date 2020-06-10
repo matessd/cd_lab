@@ -2,7 +2,7 @@
 static const char g_mips_head[] =
 {
 ".data\n_prompt: .asciiz \"Enter an integer:\"\n\
-_ret: .asciiz \"\n\"\n.globl main\n.text\n\
+_ret: .asciiz \"\\n\"\n.globl main\n.text\n\
 read:\n\
  li $v0, 4\n\
  la $a0, _prompt\n\
@@ -79,6 +79,7 @@ void clear_InfoTable(){
 //in intercode.c
 extern InterCodes *g_CodesHead;
 extern int if_Operand_Address(Operand *op);
+extern void pt_InterCodes(FILE *fp, InterCodes *codes);
 
 void trans_to_mips(InterCodes *codes);
 int get_reg(Operand *op);
@@ -103,6 +104,7 @@ int get_reg(Operand *op){
 	for(i=0; i<8; i++){
 		if(g_reg_using[i]==0){
 			g_reg_using[i] = 1;
+			break;
 		}
 	}
 	if(i==8){
@@ -126,7 +128,7 @@ int get_reg(Operand *op){
 		}
 	}
 	g_reginfo[i] = info;
-	return 0;
+	return i;
 }
 
 void spill(int reg_idx);
@@ -145,6 +147,7 @@ void spill(int reg_idx){
 #define FRAME_SIZE 8
 void trans_to_mips(InterCodes *codes){
 	/*translate intercodes to mips32 instructions*/
+	//printf("%s\n",g_SignName[codes->code.kind]);
 	myassert(codes!=NULL);
 	Operand *left = &(codes->code.result);
 	Operand *op1 = &(codes->code.op1);
@@ -154,6 +157,10 @@ void trans_to_mips(InterCodes *codes){
 	addflg1 = if_Operand_Address(left);
 	addflg2 = if_Operand_Address(op1);
 	addflg3 = if_Operand_Address(op2);
+	//DEBUG
+	fprintf(g_mips_fp, "#");
+	pt_InterCodes(g_mips_fp, codes);
+
 	switch(codes->code.kind){
 		case LABEL_DEF:
 			fprintf(g_mips_fp, "label%d:\n", left->u.value);

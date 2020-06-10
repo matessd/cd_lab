@@ -7,6 +7,7 @@ extern int error_flg;
 //extern void pTree();
 extern void DFS();
 extern void translate_root(char *filename);
+//extern void output_mips(char *filename)
 //extern int yydebug;
 int main(int argc, char** argv) {
 	if(argc <= 1) return 1;
@@ -23,6 +24,7 @@ int main(int argc, char** argv) {
 	//printf("%s\n",argv[2]);
 	DFS();
 	translate_root(argv[2]);
+	//output_mips(argv[2]);
 	return 0;
 }
 
