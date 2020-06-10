@@ -126,6 +126,9 @@ int get_reg(Operand *op){
 		{
 			fprintf(g_mips_fp, " lw $t%d, %d($fp)\n",i,info->offset);	
 		}
+	}else if(op->kind==CONSTANT)
+	{
+		fprintf(g_mips_fp, " li $t%d, %d\n", i, op->u.value);
 	}
 	g_reginfo[i] = info;
 	return i;
@@ -164,6 +167,7 @@ void trans_to_mips(InterCodes *codes){
 	switch(codes->code.kind){
 		case LABEL_DEF:
 			fprintf(g_mips_fp, "label%d:\n", left->u.value);
+			break;
 		case JMP:
 			fprintf(g_mips_fp, " j label%d\n", left->u.value);
 			break;
@@ -200,10 +204,22 @@ void trans_to_mips(InterCodes *codes){
 			reg_free(rr); reg_free(r1);
 			break;
 		case ADD_ASSIGN:
-			myassert(0);
+			rr = get_reg(left); r1 = get_reg(op1);
+			if(addflg1 && addflg2){
+				fprintf(g_mips_fp, " move $t%d, $t%d\n", rr, r1);	
+			}else if(addflg1){
+				fprintf(g_mips_fp, " addi $t%d, $fp, %d\n", rr, g_reginfo[r1]->offset);
+			}else{
+				myassert(0);
+			}
+			spill(rr);
+			reg_free(rr); reg_free(r1);
 			break;
 		case DEC_L3:
-			myassert(0);
+			g_fp_offset = g_fp_offset - op1->u.value;
+			InfoTable_insert(left, g_fp_offset);
+			fprintf(g_mips_fp, " subu $sp, $sp, %d",op1->u.value);
+			//myassert(0);
 			break;
 		case ADD:
 		case SUB:
@@ -220,7 +236,7 @@ void trans_to_mips(InterCodes *codes){
 		case JGE:
 		case JE:
 		case JNE:
-			r1=get_reg(op1); r1=get_reg(op2);
+			r1=get_reg(op1); r2=get_reg(op2);
 			fprintf(g_mips_fp, " %s $t%d, $t%d, label%d\n", g_arithIns[codes->code.kind], r1, r2, left->u.value);
 			reg_free(r1); reg_free(r2);
 			break;
