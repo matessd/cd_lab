@@ -20,11 +20,9 @@ int main(int argc, char** argv) {
 	yylineno = 1;
 	yyrestart(f);
 	yyparse();
-	//pTree();
 	//printf("%s\n",argv[2]);
 	DFS();
 	translate_root(argv[2]);
-	//printf("x\n");
 	return 0;
 }
 

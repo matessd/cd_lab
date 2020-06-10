@@ -115,6 +115,16 @@ VarNode *VarTable_search(const char *cVal){
 	return NULL;
 }
 
+void free_VarTable(){
+	VarNode *cur = g_VarHead;
+	while(cur!=NULL){
+		free(cur);
+		cur = cur->next;
+	}
+	g_VarHead = NULL;
+	g_VarTail = NULL;
+}
+
 void addCodesTail(InterCodes *codes){
 	if(g_CodesTail==NULL){
 		g_CodesHead = g_CodesTail = codes;
@@ -740,13 +750,17 @@ Operand *translate_VarDec(node_t *cur){
 extern node_t *root;
 void translate_ExtDefList(node_t *cur);
 void InterCodes_DFS(char *filename);
+extern void output_mips(char *filename);
 void translate_root(char *filename){
 	nullop = newOperand(KIND, KIND, NULL, NULL);
 	if(root->child!=NULL)
 		translate_ExtDefList(root->child);
-	//pf3(sdfsd);
-	OptimizeCodes();
-	InterCodes_DFS(filename);
+	free_VarTable();
+	//OptimizeCodes();
+	//InterCodes_DFS(filename);
+
+	//L4
+	output_mips(filename);
 	free(nullop);
 	//pf3(3);
 }
@@ -776,15 +790,12 @@ void pt_InterCodes(FILE *fp, InterCodes *codes);
 void InterCodes_DFS(char *filename){
 	FILE *fp = fopen(filename, "w");
 	InterCodes *codes = g_CodesHead;
-	int i = 0;
 	while(codes!=NULL){
 		//printf("%d\n",i++);
 		pt_InterCodes(fp, codes);
 		codes = codes->next;
 	}
-	//pf3(1);
 	fclose(fp);
-	//pf3(2);
 }
 
 void pt_Operand(Operand *op, char *dst);
@@ -888,7 +899,6 @@ void pt_InterCodes(FILE *fp, InterCodes *codes){
 			myassert(0);
 			break;
 	}
-	//printf("%s\n",g_cresult);
 }
 
 void dealPtr(int addflg1, int addflg2, char *dst){

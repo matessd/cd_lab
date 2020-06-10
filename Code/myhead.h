@@ -160,3 +160,12 @@ struct VarNode{
 	struct VarNode *next;
 };
 typedef struct VarNode VarNode;
+
+/*L4*/
+struct RegInfo{
+	int vartype;//like TEMP, CONSTANT
+	int value;
+	int offset;//offset of $fp
+	struct RegInfo *next;
+};
+typedef struct RegInfo RegInfo;
