@@ -37,7 +37,7 @@ run:
 	make clean
 	bison -d syntax.y
 	flex lexical.l
-	gcc -g main.c syntax.tab.c semantic.c intercode.c mips.c -lfl -ly -o ../parser 
+	gcc main.c syntax.tab.c semantic.c intercode.c mips.c -lfl -ly -o ../parser 
 test: 
 	./../parser ../workdir/a.cmm
 test1:
@@ -49,6 +49,7 @@ clean:
 	rm -f *~
 git:
 	git add .
-	git commit -m 'usual'
+	git commit --allow-empty
+	git push
 push: 
 	git push

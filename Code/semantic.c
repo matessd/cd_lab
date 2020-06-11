@@ -393,7 +393,7 @@ int Type_cmp(node_t *p1, node_t *p2){
 	  //printf("1\n");
 	  if(p1->id_type!=STR_TYPE && p2->id_type!=STR_TYPE){
 		if(p1->val_type!=p2->val_type || p1->arr_dim!=p2->arr_dim){
-			printf("10: %d, %d\n",p1->arr_dim, p2->arr_dim);
+			//printf("10: %d, %d\n",p1->arr_dim, p2->arr_dim);
 			ret = 1;
 		}
 	  }else{
@@ -421,7 +421,7 @@ int Args_cmp(node_t *p1, node_t *p2){
 	while(p1->member!=NULL && p2->member!=NULL){
 		//printf("%s---%d\n",p1->cVal,p2->vis);
 		if(Type_cmp(p1,p2)!=0){
-			printf("1\n");
+			//printf("1\n");
 			return 1;
 		}
 		p1 = p1->member;
@@ -429,7 +429,7 @@ int Args_cmp(node_t *p1, node_t *p2){
 	}
 	//printf("%s---%d\n",p1->cVal,p2->vis);
 	if(Type_cmp(p1,p2)!=0){
-		printf("2\n");
+		//printf("2\n");
 		return 1;
 	}
 	if(p1->member==NULL&&p2->member==NULL){
@@ -885,7 +885,7 @@ void Exp_DFS(node_t *cur){
 				Args_DFS(child->bro->bro);
 				//myassert(child->bro->bro->child!=NULL);
 				if(Args_cmp(p->member, child->bro->bro->child)!=0){
-					printf("above\n");
+					//printf("above\n");
 					pt_semantic_error(9, child->lineno, child->cVal);
 					errflg = 1;
 				}
