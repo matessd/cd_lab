@@ -40,7 +40,13 @@ RegInfo *InfoTable_insert(Operand *op, int offset){
 		g_InfoTail->next = cur;
 		g_InfoTail = cur;
 	}
-	cur->vartype = op->kind;
+	if(op->kind==TEMP || op->kind==T_ADDRESS){
+		cur->vartype = TEMP;
+	}else if(op->kind==VARIABLE || op->kind==V_ADDRESS){
+		cur->vartype = VARIABLE;
+	}else{
+		myassert(0);
+	}
 	cur->value = op->u.value;
 	cur->offset = offset;
 	cur->next = NULL;
@@ -55,12 +61,17 @@ RegInfo *InfoTable_search(Operand *op){
 	RegInfo *cur = g_InfoHead;
 	if(g_InfoHead==NULL)
 		return NULL;
+	int kind = op->kind;
+	if(kind==T_ADDRESS)
+		kind = TEMP;
+	if(kind==V_ADDRESS)
+		kind = VARIABLE;
 	while(cur->next!=NULL){
-		if(cur->vartype==op->kind && cur->value==op->u.value)
+		if(cur->vartype==kind && cur->value==op->u.value)
 			return cur;
 		cur = cur->next;
 	}
-	if(cur->vartype==op->kind && cur->value==op->u.value)
+	if(cur->vartype==kind && cur->value==op->u.value)
 		return cur;
 	return NULL;
 }
@@ -187,48 +198,75 @@ void trans_to_mips(InterCodes *codes){
 			break;
 		case FUN:
 			clear_InfoTable();
-			fprintf(g_mips_fp, "%s:\n", left->u.cVal);
 			if(strcmp("main",left->u.cVal)==0){
+				fprintf(g_mips_fp, "%s:\n", left->u.cVal);
 				fprintf(g_mips_fp, " move $fp, $sp\n subu $sp, $sp, %d\n", FRAME_SIZE);
+			}else{
+				//avoid funciton name like add
+				fprintf(g_mips_fp, "fun_%s:\n", left->u.cVal);
 			}
 			break;
 		case RET:
 			g_param_cnt = 0;
-			rr = get_reg(left);
-			fprintf(g_mips_fp, " move $v0, $t%d\n jr $ra\n\n", rr);
-			reg_free(rr);
+			if(left->kind==CONSTANT){
+				fprintf(g_mips_fp, " li $v0, %d\n jr $ra\n\n", left->u.value);
+			}else{
+				rr = get_reg(left);
+				fprintf(g_mips_fp, " move $v0, $t%d\n jr $ra\n\n", rr);
+				reg_free(rr);
+			}
 			break;
 		case ASSIGN:
-			rr = get_reg(left); r1 = get_reg(op1);
+			rr = get_reg(left);
 			if(addflg1 && addflg2){
-				myassert(0);
-				r2 = get_reg(op2);
+				r1 = get_reg(op1); r2 = get_reg(op2);
 				fprintf(g_mips_fp, " lw $t%d, 0($t%d)\n", r2, r1);
 				fprintf(g_mips_fp, " sw $t%d, 0($t%d)\n", r2, rr);
 				spill(rr);
-				reg_free(r2);
+				reg_free(r1); reg_free(r2);
 			}else if(addflg1){
+				/*if(op1->kind==CONSTANT){
+					fprintf(g_mips_fp, " sw %d, 0($t%d)\n", op1->u.value, rr);
+				}*/
+				r1 = get_reg(op1);
 				fprintf(g_mips_fp, " sw $t%d, 0($t%d)\n", r1, rr);
+				reg_free(r1);
 			}else if(addflg2){
+				r1 = get_reg(op1);
 				fprintf(g_mips_fp, " lw $t%d, 0($t%d)\n", rr, r1);
 				spill(rr);
+				reg_free(r1);
 			}else{
-				fprintf(g_mips_fp, " move $t%d, $t%d\n", rr, r1);
+				if(op1->kind==CONSTANT){
+					fprintf(g_mips_fp, " li $t%d, %d\n", rr, op1->u.value);
+				}else{
+					r1 = get_reg(op1);
+					fprintf(g_mips_fp, " move $t%d, $t%d\n", rr, r1);
+					reg_free(r1);
+				}
 				spill(rr);
 			}
-			reg_free(rr); reg_free(r1);
+			reg_free(rr);
 			break;
 		case ADD_ASSIGN:
-			rr = get_reg(left); r1 = get_reg(op1);
+			rr = get_reg(left);
 			if(addflg1 && addflg2){
+				r1 = get_reg(op1);
 				fprintf(g_mips_fp, " move $t%d, $t%d\n", rr, r1);	
+				reg_free(r1);
 			}else if(addflg1){
-				fprintf(g_mips_fp, " addi $t%d, $fp, %d\n", rr, g_reginfo[r1]->offset);
+				if(op1->kind==CONSTANT){
+					fprintf(g_mips_fp, " li $t%d, %d\n", rr, op1->u.value);
+				}else{
+					r1 = get_reg(op1);
+					fprintf(g_mips_fp, " addi $t%d, $fp, %d\n", rr, g_reginfo[r1]->offset);
+					reg_free(r1);
+				}
 			}else{
 				myassert(0);
 			}
 			spill(rr);
-			reg_free(rr); reg_free(r1);
+			reg_free(rr);
 			break;
 		case DEC_L3:
 			g_fp_offset = g_fp_offset - op1->u.value;
@@ -280,7 +318,11 @@ void trans_to_mips(InterCodes *codes){
 			}else if(codes->code.kind==WRITE){
 				fprintf(g_mips_fp, " jal write\n");
 			}else{
-				fprintf(g_mips_fp, " jal %s\n", op1->u.cVal);
+				if(strcmp("main",op1->u.cVal)==0){
+					fprintf(g_mips_fp, " jal %s\n", op1->u.cVal);
+				}else{
+					fprintf(g_mips_fp, " jal fun_%s\n", op1->u.cVal);
+				}
 			}
 
 			fprintf(g_mips_fp, " move $sp, $fp\n");

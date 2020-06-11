@@ -756,7 +756,7 @@ void translate_root(char *filename){
 	if(root->child!=NULL)
 		translate_ExtDefList(root->child);
 	free_VarTable();
-	//OptimizeCodes();
+	OptimizeCodes();
 	//InterCodes_DFS(filename);
 
 	//L4
@@ -1041,7 +1041,7 @@ void BlockOptimize(InterCodes *head, InterCodes *tail){
 				replace = NULL;
 			}
 		}
-		else if(kind==ASSIGN || kind==ADD_ASSIGN)
+		/*else if(kind==ASSIGN || kind==ADD_ASSIGN)
 		{//merge assign expression
 			nxt = cur->next;
 			int replaceflg = 1;
@@ -1067,7 +1067,7 @@ void BlockOptimize(InterCodes *head, InterCodes *tail){
 				free(replace);
 				replace = NULL;
 			}
-		}
+		}*/
 		cur = cur->next;
 	}
 	return;
