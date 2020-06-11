@@ -7,6 +7,9 @@ NORMAL=$(tput sgr0)
 
 cd $(dirname $0)
 
+#echo "Making(Updating) irsim"
+#make -C irsim
+
 if ! [ -z $1 ]
 then
   rm ./workdir/saved_binary.sh 2> /dev/null
@@ -54,21 +57,26 @@ else
     PREFIX="";
 fi;
 
-for fcmm in ./tests/2; do
-  #cp $fcmm ./workdir/a.cmm
-  #cp ${fcmm%.cmm}.json ./workdir/a.json
+echo 0 > workdir/count
+for fcmm in ./advance/2020-Advanced-A-*.cmm; do
+  cp $fcmm ./workdir/a.cmm
+  cp ${fcmm%.cmm}.json ./workdir/a.json
 
-  if $PREFIX $RUN ./workdir/a.cmm  ./workdir/a.s 2>&1; then
+  if $PREFIX $RUN ./workdir/a.cmm  ./workdir/a.ir 2>&1; then
       true; #do nothing
   else
       report_error "RE or TLE"
       continue
   fi;
 
-  if $PREFIX python3 ./check.py; then
+  if $PREFIX python3 ./ircheck.py; then
     echo test [$(basename $fcmm)] matched
   else
     report_error "mismatch or TLE"
     continue
   fi
 done
+
+echo -n "irsim executes about "
+cat workdir/count
+echo " instructions"

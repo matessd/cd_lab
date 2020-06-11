@@ -10,7 +10,7 @@ def err(data_in, s):
 
 spim_file = "./workdir/a.s";
 f_json    = "./workdir/a.json";
-program   = "spim -file"
+program   = "./mips-sim"
 spim_in   = './workdir/spim_in'
 spim_out  = './workdir/spim_out'
 flags = ''

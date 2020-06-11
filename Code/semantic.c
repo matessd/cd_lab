@@ -393,17 +393,19 @@ int Type_cmp(node_t *p1, node_t *p2){
 	  //printf("1\n");
 	  if(p1->id_type!=STR_TYPE && p2->id_type!=STR_TYPE){
 		if(p1->val_type!=p2->val_type || p1->arr_dim!=p2->arr_dim){
-			//printf("2\n");
+			printf("10: %d, %d\n",p1->arr_dim, p2->arr_dim);
 			ret = 1;
 		}
 	  }else{
-		//printf("1\n");
+		//printf("11\n");
 	    ret = 1;
 	  }
 	}else{
 		myassert(p1->val_type==STR_VAR && p2->val_type==STR_VAR);
-		if(p1->arr_dim!=p2->arr_dim)
+		if(p1->arr_dim!=p2->arr_dim){
+			//printf("12\n");
 			return 1;
+		}
 		if(p1->detail==p2->detail) 
 			return 0;
 		myassert(p1->detail!=NULL && p2->detail!=NULL);
@@ -418,17 +420,22 @@ int Args_cmp(node_t *p1, node_t *p2){
 	if(p1==p2) return 0;//same structure name
 	while(p1->member!=NULL && p2->member!=NULL){
 		//printf("%s---%d\n",p1->cVal,p2->vis);
-		if(Type_cmp(p1,p2)!=0)
+		if(Type_cmp(p1,p2)!=0){
+			printf("1\n");
 			return 1;
+		}
 		p1 = p1->member;
 		p2 = p2->member;
 	}
 	//printf("%s---%d\n",p1->cVal,p2->vis);
-	if(Type_cmp(p1,p2)!=0)
-			return 1;
+	if(Type_cmp(p1,p2)!=0){
+		printf("2\n");
+		return 1;
+	}
 	if(p1->member==NULL&&p2->member==NULL){
 		return 0;
 	}else{
+		//printf("3\n");
 		/*myassert(p2->member == NULL);
 		printf("%s---%d\n",p1->member->cVal,p1->member->lineno);
 		node_t *pp = p1->member->member;
@@ -489,14 +496,14 @@ int Type_op(int optype, node_t* p1, node_t *p2){
 }
 
 void Type_cpy(int errflg, node_t *dst, node_t *src){
+	dst->id_type = src->id_type;
+	dst->val_type = src->val_type;
+	dst->arr_dim = src->arr_dim;//union?
+	//dst->arg_num = src->arg_num;
+	dst->detail = src->detail;
+	dst->member = src->member;
 	if(errflg==0){
 		dst->errflg = errflg;
-		dst->id_type = src->id_type;
-		dst->val_type = src->val_type;
-		dst->arr_dim = src->arr_dim;//union?
-		//dst->arg_num = src->arg_num;
-		dst->detail = src->detail;
-		dst->member = src->member;
 	}else{
 		dst->errflg = 1;
 	}
@@ -761,6 +768,7 @@ void FunDec_DFS(node_t *cur, node_t* type, int val_type){
 	strcpy(cur->cVal, child->cVal);
 	//printf("1\n");
 	cur->detail = cur->member = NULL;
+	//cur->arr_dim = 0;
 	//val_type
 	if(type==NULL){
 		cur->val_type = val_type;
@@ -838,7 +846,10 @@ void ExtDef_DFS(node_t *cur){
 }
 
 void Exp_DFS(node_t *cur){
-	//printf("%s:1\n",mytname[cur->child->syntype]);
+	if(cur->vis==1){
+		myassert(0);
+		return;
+	}
 	cur->vis = 1;
 	node_t *child = cur->child;
 	sym_t *p = NULL, *p1=NULL, *p2=NULL, *p3=NULL;
@@ -874,6 +885,7 @@ void Exp_DFS(node_t *cur){
 				Args_DFS(child->bro->bro);
 				//myassert(child->bro->bro->child!=NULL);
 				if(Args_cmp(p->member, child->bro->bro->child)!=0){
+					printf("above\n");
 					pt_semantic_error(9, child->lineno, child->cVal);
 					errflg = 1;
 				}
@@ -983,6 +995,7 @@ node_t *Args_DFS(node_t *cur){
 void RETURN_DFS(node_t *cur){
 	node_t *bro = cur->bro;
 	sym_t *psym = funEnv;
+	subTree_Exp_DFS(bro);
     if(Type_cmp(psym, bro)!=0){
 		pt_semantic_error(8, cur->lineno, NULL);
 	}	

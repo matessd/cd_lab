@@ -24,6 +24,8 @@ RegInfo *g_reginfo[32];
 
 RegInfo *g_InfoHead=NULL, *g_InfoTail=NULL;
 int g_fp_offset=-8;//offset to $fp for var in funciton
+int g_fp_size=0;//the space size $fp can use
+#define FRAME_SIZE 1024
 
 /*Description: insert reginfo into table
 */
@@ -87,6 +89,7 @@ void clear_InfoTable(){
 	g_InfoHead = NULL;
 	g_InfoTail = NULL;
 	g_fp_offset = -8;
+	g_fp_size = 0;
 }
 
 //in intercode.c
@@ -161,8 +164,13 @@ int get_reg(Operand *op){
 RegInfo *fp_alloc(Operand *op, int size){
 	//alloc memory of size, and insert into InfoTable
 	g_fp_offset = g_fp_offset - size;
+	while((g_fp_size + g_fp_offset) <= 0){
+		int add_size = -(g_fp_size + g_fp_offset);
+		//printf("%d**%d\n",add_size,size);
+		fprintf(g_mips_fp, " subu $sp, $sp, %d\n", add_size+FRAME_SIZE);
+		g_fp_size += add_size + FRAME_SIZE;
+	}
 	RegInfo *info = InfoTable_insert(op, g_fp_offset);
-	fprintf(g_mips_fp, " subu $sp, $sp, %d\n",size);
 	return info;
 }
 
@@ -180,10 +188,8 @@ void spill(int reg_idx){
 }
 
 
-#define FRAME_SIZE 4096
 void trans_to_mips(InterCodes *codes){
 	/*translate intercodes to mips32 instructions*/
-	//printf("%s\n",g_SignName[codes->code.kind]);
 	myassert(codes!=NULL);
 	Operand *left = &(codes->code.result);
 	Operand *op1 = &(codes->code.op1);
@@ -204,27 +210,6 @@ void trans_to_mips(InterCodes *codes){
 		case JMP:
 			fprintf(g_mips_fp, " j label%d\n", left->u.value);
 			break;
-		case FUN:
-			clear_InfoTable();
-			if(strcmp("main",left->u.cVal)==0){
-				fprintf(g_mips_fp, "%s:\n", left->u.cVal);
-				fprintf(g_mips_fp, " move $fp, $sp\n subu $sp, $sp, %d\n", FRAME_SIZE);
-			}else{
-				//avoid funciton name like add
-				fprintf(g_mips_fp, "fun_%s:\n", left->u.cVal);
-			}
-			break;
-		case RET:
-			g_param_cnt = 0;
-			if(left->kind==CONSTANT){
-				fprintf(g_mips_fp, " li $v0, %d\n", left->u.value);
-			}else{
-				rr = get_reg(left);
-				fprintf(g_mips_fp, " move $v0, $%d\n", rr);
-				reg_free(rr);
-			}
-			fprintf(g_mips_fp, " jr $ra\n\n");
-			break;
 		case ASSIGN:
 			rr = get_reg(left);
 			if(addflg1 && addflg2){
@@ -234,9 +219,6 @@ void trans_to_mips(InterCodes *codes){
 				spill(rr);
 				reg_free(r1); reg_free(r2);
 			}else if(addflg1){
-				/*if(op1->kind==CONSTANT){
-					fprintf(g_mips_fp, " sw %d, 0($%d)\n", op1->u.value, rr);
-				}*/
 				r1 = get_reg(op1);
 				fprintf(g_mips_fp, " sw $%d, 0($%d)\n", r1, rr);
 				reg_free(r1);
@@ -304,6 +286,29 @@ void trans_to_mips(InterCodes *codes){
 			fprintf(g_mips_fp, " %s $%d, $%d, label%d\n", g_arithIns[codes->code.kind], r1, r2, left->u.value);
 			reg_free(r1); reg_free(r2);
 			break;
+		case FUN:
+			clear_InfoTable();
+			if(strcmp("main",left->u.cVal)==0){
+				fprintf(g_mips_fp, "%s:\n", left->u.cVal);
+			}else{
+				//avoid funciton name like add
+				fprintf(g_mips_fp, "fun_%s:\n", left->u.cVal);
+			}
+			fprintf(g_mips_fp, " subu $sp, $sp, %d\n",FRAME_SIZE);
+			g_fp_size += FRAME_SIZE;
+			fprintf(g_mips_fp, " addi $fp, $sp, %d\n",FRAME_SIZE);
+			break;
+		case RET:
+			g_param_cnt = 0;
+			if(left->kind==CONSTANT){
+				fprintf(g_mips_fp, " li $v0, %d\n", left->u.value);
+			}else{
+				rr = get_reg(left);
+				fprintf(g_mips_fp, " move $v0, $%d\n", rr);
+				reg_free(rr);
+			}
+			fprintf(g_mips_fp, " jr $ra\n\n");
+			break;
 		case CALL:
 		case READ:
 		case WRITE:
@@ -314,20 +319,18 @@ void trans_to_mips(InterCodes *codes){
 				fprintf(g_mips_fp, " move $a0, $%d\n",rr);
 				reg_free(rr);
 			}
-			fprintf(g_mips_fp, " subu $sp, $sp, %d\n",FRAME_SIZE);
-			fprintf(g_mips_fp, " sw $ra, %d($sp)\n",FRAME_SIZE-4);
-			fprintf(g_mips_fp, " sw $fp, %d($sp)\n",FRAME_SIZE-8);
-			fprintf(g_mips_fp, " addi $fp, $sp, %d\n",FRAME_SIZE);
+			fprintf(g_mips_fp, " sw $ra, %d($sp)\n",-4);
+			fprintf(g_mips_fp, " sw $fp, %d($sp)\n",-8);
 
 			if(codes->code.kind==READ || codes->code.kind==WRITE){
+				fprintf(g_mips_fp, " subu $sp, $sp, %d\n",FRAME_SIZE);
+				//g_fp_size += FRAME_SIZE;
+				fprintf(g_mips_fp, " addi $fp, $sp, %d\n",FRAME_SIZE);
 				if(codes->code.kind==READ){
 					fprintf(g_mips_fp, " jal read\n");
 				}else{
 					fprintf(g_mips_fp, " jal write\n");
 				}
-				/*fprintf(g_mips_fp, " move $sp, $fp\n");
-				fprintf(g_mips_fp, " lw $ra, -4($fp)\n");
-				fprintf(g_mips_fp, " lw $fp, -8($fp)\n");*/
 			}else{
 				if(strcmp("main",op1->u.cVal)==0){
 					fprintf(g_mips_fp, " jal %s\n", op1->u.cVal);
@@ -352,6 +355,7 @@ void trans_to_mips(InterCodes *codes){
 				fprintf(g_mips_fp, " move $a%d, $%d\n",g_arg_cnt-1, rr);
 			}else{
 				fprintf(g_mips_fp, " subu $sp, $sp, 4\n");
+				g_fp_size += 4;
 				fprintf(g_mips_fp, " sw $%d, 0($sp)\n", rr);
 			}
 			g_arg_cnt--;

@@ -37,7 +37,7 @@ run:
 	make clean
 	bison -d syntax.y
 	flex lexical.l
-	gcc main.c syntax.tab.c semantic.c intercode.c mips.c -lfl -ly -o ../parser 
+	gcc -g main.c syntax.tab.c semantic.c intercode.c mips.c -lfl -ly -o ../parser 
 test: 
 	./../parser ../workdir/a.cmm
 test1:
