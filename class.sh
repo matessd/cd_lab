@@ -54,7 +54,7 @@ else
     PREFIX="";
 fi;
 
-for fcmm in ./advance/*.cmm; do
+for fcmm in ./tests/ZM.cmm; do
   cp $fcmm ./workdir/a.cmm
   cp ${fcmm%.cmm}.json ./workdir/a.json
 
