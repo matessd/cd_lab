@@ -200,8 +200,8 @@ void trans_to_mips(InterCodes *codes){
 	addflg2 = if_Operand_Address(op1);
 	addflg3 = if_Operand_Address(op2);
 	//DEBUG
-	fprintf(g_mips_fp, "#");
-	pt_InterCodes(g_mips_fp, codes);
+	//fprintf(g_mips_fp, "#");
+	//pt_InterCodes(g_mips_fp, codes);
 
 	switch(codes->code.kind){
 		case LABEL_DEF:

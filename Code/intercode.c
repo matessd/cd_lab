@@ -762,7 +762,6 @@ void translate_root(char *filename){
 	//L4
 	output_mips(filename);
 	free(nullop);
-	//pf3(3);
 }
 
 void translate_ExtDef(node_t *cur);
